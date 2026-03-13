@@ -490,27 +490,37 @@ function rankBadge(rank) {
 ================================================================ */
 
 // Live/today scoreboard — find A&M game if one exists.
-// First try without a date filter (catches live tournament games on any date),
-// then fall back to an explicit date string if nothing found.
+// Tries multiple ESPN scoreboard URLs because tournament games (SEC, NCAA)
+// are sometimes only returned with specific group/date parameters.
 async function fetchLiveScore(cfg) {
     const findAggies = events =>
         (events || []).find(e =>
             e.competitions?.[0]?.competitors?.some(c => c.team?.id === cfg.teamId)
         ) || null;
 
-    // 1. No date filter — ESPN returns currently live + today's games
-    const r1   = await fetch(`${ESPN}/${cfg.espnSport}/${cfg.espnLeague}/scoreboard`);
-    const d1   = r1.ok ? await r1.json() : {};
-    const hit1 = findAggies(d1.events);
-    if (hit1) return hit1;
-
-    // 2. Explicit today in local CDT date (avoids UTC-vs-CDT edge cases)
-    const now   = new Date();
-    const local = new Date(now.toLocaleString('en-US', {timeZone: 'America/Chicago'}));
+    // CDT-correct date string
+    const local = new Date(new Date().toLocaleString('en-US', {timeZone: 'America/Chicago'}));
     const ymd   = `${local.getFullYear()}${String(local.getMonth()+1).padStart(2,'0')}${String(local.getDate()).padStart(2,'0')}`;
-    const r2    = await fetch(`${ESPN}/${cfg.espnSport}/${cfg.espnLeague}/scoreboard?dates=${ymd}`);
-    const d2    = r2.ok ? await r2.json() : {};
-    return findAggies(d2.events);
+    const base  = `${ESPN}/${cfg.espnSport}/${cfg.espnLeague}/scoreboard`;
+
+    // Try all these URLs in order, return first one that finds A&M
+    const urls = [
+        base,                                    // default — live games
+        `${base}?dates=${ymd}`,                  // today CDT
+        `${base}?dates=${ymd}&groups=50&limit=300`, // SEC tournament
+        `${base}?dates=${ymd}&limit=300`,        // all today with higher limit
+    ];
+
+    for (const url of urls) {
+        try {
+            const r = await fetch(url);
+            if (!r.ok) continue;
+            const d = await r.json();
+            const hit = findAggies(d.events);
+            if (hit) return hit;
+        } catch(e) { /* try next */ }
+    }
+    return null;
 }
 
 // Full season schedule.
