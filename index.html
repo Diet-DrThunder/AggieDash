@@ -635,7 +635,7 @@ function renderNextGame(events, cfg) {
     el.innerHTML = `
         <div class="gc-team">
             ${logoImg(aggies?.team)}
-            <div class="gc-name-row">Texas A&M</div>
+            <div class="gc-name-row">${rankBadge(getRank(aggies))}Texas A&M</div>
             <div class="gc-record">${ourRec}</div>
         </div>
         <div class="gc-center">
