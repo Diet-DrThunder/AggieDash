@@ -717,7 +717,18 @@ async function refresh() {
 
     try {
         const live = await fetchLiveScore(cfg);
-        live ? renderLiveScore(live, cfg) : renderNextGame(events, cfg);
+        if (live) {
+            const st = live.competitions?.[0]?.status?.type;
+            // Only use live card if game is actually in progress or completed today
+            // If it's a future game (state=pre), fall through to next-game card which shows date+time
+            if (st?.state === 'in' || st?.completed) {
+                renderLiveScore(live, cfg);
+            } else {
+                renderNextGame(events, cfg);
+            }
+        } else {
+            renderNextGame(events, cfg);
+        }
     } catch(e) {
         console.warn('Score fetch failed:', e);
         renderNextGame(events, cfg);
