@@ -489,15 +489,28 @@ function rankBadge(rank) {
    FETCH
 ================================================================ */
 
-// Today's scoreboard — find A&M game if one exists
+// Live/today scoreboard — find A&M game if one exists.
+// First try without a date filter (catches live tournament games on any date),
+// then fall back to an explicit date string if nothing found.
 async function fetchLiveScore(cfg) {
-    const url = `${ESPN}/${cfg.espnSport}/${cfg.espnLeague}/scoreboard?dates=${todayStr()}`;
-    const res = await fetch(url);
-    if (!res.ok) throw new Error(res.status);
-    const data = await res.json();
-    return (data.events || []).find(e =>
-        e.competitions?.[0]?.competitors?.some(c => c.team?.id === cfg.teamId)
-    ) || null;
+    const findAggies = events =>
+        (events || []).find(e =>
+            e.competitions?.[0]?.competitors?.some(c => c.team?.id === cfg.teamId)
+        ) || null;
+
+    // 1. No date filter — ESPN returns currently live + today's games
+    const r1   = await fetch(`${ESPN}/${cfg.espnSport}/${cfg.espnLeague}/scoreboard`);
+    const d1   = r1.ok ? await r1.json() : {};
+    const hit1 = findAggies(d1.events);
+    if (hit1) return hit1;
+
+    // 2. Explicit today in local CDT date (avoids UTC-vs-CDT edge cases)
+    const now   = new Date();
+    const local = new Date(now.toLocaleString('en-US', {timeZone: 'America/Chicago'}));
+    const ymd   = `${local.getFullYear()}${String(local.getMonth()+1).padStart(2,'0')}${String(local.getDate()).padStart(2,'0')}`;
+    const r2    = await fetch(`${ESPN}/${cfg.espnSport}/${cfg.espnLeague}/scoreboard?dates=${ymd}`);
+    const d2    = r2.ok ? await r2.json() : {};
+    return findAggies(d2.events);
 }
 
 // Full season schedule.
