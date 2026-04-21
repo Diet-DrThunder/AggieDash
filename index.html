@@ -355,6 +355,8 @@
         <button class="audio-btn"        onclick="play('spirit.mp3')">Aggie Spirit</button>
         <button class="audio-btn action" onclick="play('touchdown.mp3')">TOUCHDOWN!</button>
         <button class="audio-btn action" onclick="play('homerun.mp3')">HOME RUN!</button>
+        <button class="audio-btn"        onclick="play('Rifleman.mp3')">The Rifleman</button>
+        <button class="audio-btn"        onclick="play('Turbulence.mp3')">Turbulence</button>
         <button class="audio-btn stop-btn" id="stop-btn" onclick="stopAudio()" style="grid-column:1/-1;display:none;">Stop Audio</button>
     </div>
 
@@ -543,7 +545,7 @@ async function fetchSchedule(cfg) {
 /* ================================================================
    RENDER — LIVE / TODAY SCORE CARD
 ================================================================ */
-function renderLiveScore(event, cfg) {
+function renderLiveScore(event, cfg = {}) {
     const el   = document.getElementById('live-score');
     const comp = event.competitions[0];
     const home = comp.competitors.find(c => c.homeAway === 'home');
@@ -556,7 +558,28 @@ function renderLiveScore(event, cfg) {
     } else if (st?.state === 'in') {
         const clock  = comp.status?.displayClock || '';
         const period = comp.status?.period;
-        statusText   = `LIVE  ${clock}${period ? '  P'+period : ''}`;
+        let periodLabel = '';
+        if (period) {
+            if (cfg.espnLeague === 'college-football') {
+                // Football: Q1, Q2, Q3, Q4 (+ OT)
+                const qLabels = ['Q1','Q2','Q3','Q4'];
+                periodLabel = qLabels[period - 1] || `OT${period > 4 ? period - 4 : ''}`;
+            } else if (cfg.espnLeague === 'mens-college-basketball') {
+                // Basketball: H1, H2 (+ OT)
+                const hLabels = ['H1','H2'];
+                periodLabel = hLabels[period - 1] || `OT${period > 2 ? period - 2 : ''}`;
+            } else if (cfg.espnLeague === 'college-baseball') {
+                // Baseball: ordinal inning + top/bottom indicator
+                const ordinals = ['1st','2nd','3rd','4th','5th','6th','7th','8th','9th',
+                                  '10th','11th','12th','13th','14th','15th'];
+                const inningLabel = ordinals[period - 1] || `${period}th`;
+                // ESPN's shortDetail often has "Top" or "Bot" — fall back to display
+                const detail = comp.status?.shortDetail || '';
+                const half = /top/i.test(detail) ? '▲' : /bot/i.test(detail) ? '▽' : '';
+                periodLabel = `${half} ${inningLabel}`.trim();
+            }
+        }
+        statusText = `LIVE  ${clock}${periodLabel ? '  ' + periodLabel : ''}`;
     } else {
         // Format upcoming game time in CDT instead of ESPN's default EDT string
         const gameTime = event.date ? toCT(new Date(event.date)) + ' CDT' : 'UPCOMING';
