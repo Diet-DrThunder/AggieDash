@@ -772,12 +772,15 @@ async function fetchLiveScore(cfg) {
             e.competitions?.[0]?.competitors?.some(c => c.team?.id === cfg.teamId)
         ) || null;
 
-    const local = new Date(new Date().toLocaleString('en-US', {timeZone: 'America/Chicago'}));
-    const ymd   = `${local.getFullYear()}${String(local.getMonth()+1).padStart(2,'0')}${String(local.getDate()).padStart(2,'0')}`;
-    const base  = `${ESPN}/${cfg.espnSport}/${cfg.espnLeague}/scoreboard`;
+    const local   = new Date(new Date().toLocaleString('en-US', {timeZone: 'America/Chicago'}));
+    const ymd     = `${local.getFullYear()}${String(local.getMonth()+1).padStart(2,'0')}${String(local.getDate()).padStart(2,'0')}`;
+    const todayCT = toCTDate(local, { year:'numeric', month:'numeric', day:'numeric' });
+    const base    = `${ESPN}/${cfg.espnSport}/${cfg.espnLeague}/scoreboard`;
 
+    // Date-scoped queries only — an un-scoped query can return "this week's"
+    // game from ESPN's default context even when it's days/weeks away, which
+    // would wrongly render as a live/today card.
     const urls = [
-        base,
         `${base}?dates=${ymd}`,
         `${base}?dates=${ymd}&groups=50&limit=300`,
         `${base}?dates=${ymd}&limit=300`,
@@ -789,27 +792,40 @@ async function fetchLiveScore(cfg) {
             if (!r.ok) continue;
             const d = await r.json();
             const hit = findAggies(d.events);
-            if (hit) return hit;
+            if (!hit) continue;
+
+            const st = hit.competitions?.[0]?.status?.type?.state;
+            const gameCT = toCTDate(new Date(hit.date), { year:'numeric', month:'numeric', day:'numeric' });
+            // Only surface it as "live" if it's in progress, finished, or actually today.
+            if (st === 'in' || st === 'post' || gameCT === todayCT) return hit;
         } catch(e) { }
     }
     return null;
 }
 
 async function fetchSchedule(cfg) {
-    const now  = new Date();
-    let year   = cfg.season || now.getFullYear();
-    if (cfg.espnLeague === 'college-football' && now.getMonth() < 7) year = cfg.season || now.getFullYear();
-    
-    const url  = `${ESPN}/${cfg.espnSport}/${cfg.espnLeague}/teams/${cfg.teamId}/schedule?season=${year}`;
-    try {
-        const res  = await fetch(url);
-        if (!res.ok) throw new Error(res.status);
-        const data = await res.json();
-        return data.events || [];
-    } catch(e) {
-        console.error('Schedule fetch error:', e);
-        return [];
+    const year = cfg.season || new Date().getFullYear();
+    const base = `${ESPN}/${cfg.espnSport}/${cfg.espnLeague}/teams/${cfg.teamId}/schedule`;
+
+    // ESPN's team-schedule endpoint can lag behind the live scoreboard for a
+    // season that hasn't kicked off yet, so try a few query shapes in order.
+    const urls = [
+        `${base}?season=${year}`,
+        `${base}?season=${year}&seasontype=2`,
+        base, // no season param — ESPN's current default context
+    ];
+
+    for (const url of urls) {
+        try {
+            const res = await fetch(url);
+            if (!res.ok) continue;
+            const data = await res.json();
+            if (data.events && data.events.length) return data.events;
+        } catch(e) {
+            console.error('Schedule fetch error:', url, e);
+        }
     }
+    return [];
 }
 
 /* ================================================================
