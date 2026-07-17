@@ -260,38 +260,144 @@
     .gc-stat-label { font-weight: 700; }
 
     /* ============================================================
-       SCHEDULE GRID
+       SCHEDULE GRID — REFACTORED (3-Column Responsive)
     ============================================================ */
     .section-title {
         font-family: var(--font-display); font-size: 0.85rem;
         letter-spacing: 2px; text-transform: uppercase;
         color: var(--color-section-title); margin: 0 0 10px 4px;
     }
+
     .sched-grid {
-        display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 10px;
         margin-bottom: 18px;
     }
+
+    @media (min-width: 640px) {
+        .sched-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+
+    @media (min-width: 1024px) {
+        .sched-grid {
+            grid-template-columns: repeat(3, 1fr);
+        }
+    }
+
     .sched-card {
-        background: var(--color-card-bg);
-        border: 1px solid var(--color-sched-border);
-        border-radius: var(--radius-card);
-        padding: 12px; cursor: pointer;
-        transition: all 0.2s; box-shadow: var(--shadow-card);
+        position: relative;
+        background: rgba(74, 0, 0, 0.4);
+        backdrop-filter: blur(8px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 12px;
+        padding: 12px;
+        cursor: pointer;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        aspect-ratio: 1;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        overflow: hidden;
+        font-family: var(--font-body);
     }
-    .sched-card:hover { transform: translateY(-2px); opacity: 0.9; }
-    .sched-card-date { font-weight: 700; font-size: 0.75rem; color: var(--color-sched-date); }
-    .sched-card-opp { 
-        font-weight: 900; font-size: 0.8rem;
-        color: var(--color-sched-opp); margin: 4px 0;
+
+    .sched-card:hover {
+        transform: scale(1.02);
+        background: rgba(90, 0, 0, 0.6);
+        border-color: rgba(255, 255, 255, 0.2);
     }
+
+    .sched-card:active {
+        transform: scale(0.95);
+    }
+
+    /* Card header: Date and Time */
+    .sched-card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 8px;
+    }
+
+    .sched-card-date {
+        font-weight: 700;
+        font-size: 0.75rem;
+        color: rgba(255, 255, 255, 0.6);
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+    }
+
+    .sched-card-time {
+        font-weight: 700;
+        font-size: 0.75rem;
+        color: rgba(255, 255, 255, 0.5);
+    }
+
+    /* Card center: Logo */
+    .sched-card-logo-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        flex: 1;
+        margin-bottom: 8px;
+    }
+
+    .sched-card-logo {
+        width: 50px;
+        height: 50px;
+        object-fit: contain;
+    }
+
+    .sched-card-logo-placeholder {
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.1);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.6rem;
+        font-weight: 900;
+        color: rgba(255, 255, 255, 0.3);
+    }
+
+    /* Card footer: Opponent and Result */
+    .sched-card-footer {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        text-align: center;
+    }
+
+    .sched-card-opp {
+        font-weight: 900;
+        font-size: 0.8rem;
+        color: rgba(255, 255, 255, 0.9);
+        line-height: 1.2;
+    }
+
     .sched-card-result {
-        font-size: 0.7rem; font-weight: 900;
-        color: var(--color-sched-upcoming);
+        font-size: 0.7rem;
+        font-weight: 900;
+        color: rgba(255, 255, 255, 0.35);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
     }
-    .sched-card.won .sched-card-result { color: var(--color-win); }
-    .sched-card.lost .sched-card-result { color: var(--color-loss); }
-    .sched-card.live .sched-card-result { color: var(--color-live); }
-    .sched-card-logo { width: 40px; height: 40px; object-fit: contain; margin-top: 6px; }
+
+    .sched-card.won .sched-card-result {
+        color: var(--color-win);
+    }
+
+    .sched-card.lost .sched-card-result {
+        color: var(--color-loss);
+    }
+
+    .sched-card.live .sched-card-result {
+        color: var(--color-live);
+    }
 
     /* ============================================================
        QUICK STATS BUTTONS
@@ -434,7 +540,7 @@
         <button class="stat-btn" onclick="openModal('injuries')">Injuries / Roster</button>
     </div>
 
-    <!-- Schedule Grid -->
+    <!-- Schedule Grid (Refactored) -->
     <div class="section-title">Schedule</div>
     <div id="sched-grid" class="sched-grid"><div class="loading" style="grid-column:1/-1">Loading schedule...</div></div>
 
@@ -555,6 +661,12 @@ function logoImg(team) {
     const src = getLogo(team);
     if (!src) return `<div class="gc-logo-placeholder">TBD</div>`;
     return `<img class="gc-logo" src="${src}" onerror="this.outerHTML='<div class=\\'gc-logo-placeholder\\'>TBD</div>'" alt="">`;
+}
+
+function schedLogoImg(team) {
+    const src = getLogo(team);
+    if (!src) return `<div class="sched-card-logo-placeholder">TBD</div>`;
+    return `<img class="sched-card-logo" src="${src}" onerror="this.outerHTML='<div class=\\'sched-card-logo-placeholder\\'>TBD</div>'" alt="">`;
 }
 
 function rankBadge(rank) {
@@ -728,21 +840,21 @@ function renderNextGame(events, cfg) {
 }
 
 /* ================================================================
-   RENDER — SCHEDULE GRID
+   RENDER — SCHEDULE GRID (Refactored)
 ================================================================ */
 function renderScheduleGrid(events, cfg) {
     const el = document.getElementById('sched-grid');
     if (!events.length) { el.innerHTML = '<div class="loading" style="grid-column:1/-1">No schedule found.</div>'; return; }
 
     let html = '';
-    events.slice(0, 6).forEach((event, idx) => {
+    events.slice(0, 12).forEach((event, idx) => {
         const comp     = event.competitions?.[0];
         const aggies   = comp?.competitors?.find(c => c.team?.id === cfg.teamId);
         const opp      = comp?.competitors?.find(c => c.team?.id !== cfg.teamId);
         const homeAway = aggies?.homeAway === 'home' ? 'vs' : '@';
         const oppName  = opp?.team?.shortDisplayName || opp?.team?.displayName || 'TBD';
         const gd       = new Date(event.date);
-        const dateStr  = toCTDate(gd, { month:'short', day:'numeric' });
+        const dateStr  = toCTDate(gd, { month:'short', day:'numeric' }).toUpperCase();
         const timeStr  = toCT(gd);
         const done     = comp?.status?.type?.completed;
         const inProg   = comp?.status?.type?.state === 'in';
@@ -762,16 +874,20 @@ function renderScheduleGrid(events, cfg) {
             result = timeStr;
         }
 
-        const oppLogo = getLogo(opp?.team);
-        const oppLogoHtml = oppLogo ? `<img class="sched-card-logo" src="${oppLogo}" alt="">` : '';
-
         html += `
-            <div class="sched-card ${resultClass}" onclick="openGameModal(${idx})">
-                <div class="sched-card-date">${dateStr}</div>
-                <div class="sched-card-opp">${homeAway} ${oppName}</div>
-                <div class="sched-card-result">${result}</div>
-                ${oppLogoHtml}
-            </div>`;
+            <button class="sched-card ${resultClass}" onclick="openGameModal(${idx})">
+                <div class="sched-card-header">
+                    <span class="sched-card-date">${dateStr}</span>
+                    <span class="sched-card-time">${timeStr}</span>
+                </div>
+                <div class="sched-card-logo-container">
+                    ${schedLogoImg(opp?.team)}
+                </div>
+                <div class="sched-card-footer">
+                    <div class="sched-card-opp">${homeAway} ${oppName}</div>
+                    <div class="sched-card-result">${result}</div>
+                </div>
+            </button>`;
     });
     el.innerHTML = html;
 }
@@ -991,7 +1107,7 @@ function setSport(sport) {
 
     document.getElementById('live-score').className = 'game-card empty';
     document.getElementById('live-score').innerHTML = `<div style="font-weight:700;color:#888">Loading...</div>`;
-    document.getElementById('sched-grid').innerHTML = '<div class="loading" style="grid-column:1/-1">Loading...</div>';
+    document.getElementById('sched-grid').innerHTML = '<div class="loading" style="grid-column:1/-1">Loading...</div>`;
 
     refresh();
 }
@@ -1002,26 +1118,23 @@ function setSport(sport) {
 let currentAudio = null;
 
 function play(file) {
-    if (currentAudio) { currentAudio.pause(); currentAudio.currentTime = 0; }
-    const a = new Audio(file);
-    a.play().catch(() => console.log('Audio file not found:', file));
-    currentAudio = a;
+    if (currentAudio) currentAudio.pause();
+    currentAudio = new Audio(file);
+    currentAudio.play().catch(e => console.warn('Playback failed:', e));
     document.getElementById('stop-btn').style.display = 'block';
-    a.addEventListener('ended', () => {
-        currentAudio = null;
-        document.getElementById('stop-btn').style.display = 'none';
-    });
 }
 
 function stopAudio() {
-    if (currentAudio) { currentAudio.pause(); currentAudio.currentTime = 0; currentAudio = null; }
+    if (currentAudio) {
+        currentAudio.pause();
+        currentAudio.currentTime = 0;
+    }
     document.getElementById('stop-btn').style.display = 'none';
 }
 
 /* ================================================================
    INIT
 ================================================================ */
-setInterval(refresh, 60000);
 refresh();
 </script>
 </body>
