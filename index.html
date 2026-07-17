@@ -17,6 +17,8 @@
     /* Shared values — same in both modes */
     :root {
         --color-maroon:     #500000;
+        --color-maroon-home: rgba(80, 0, 0, 0.7);
+        --color-away:       rgba(200, 200, 200, 0.3);
         --color-win:        #2e9e4f;
         --color-loss:       #d63031;
         --color-live:       #e53e3e;
@@ -119,7 +121,7 @@
         margin: 0; padding: 16px; min-height: 100vh;
         transition: background-color 0.25s, color 0.25s;
     }
-    .container { max-width: 680px; margin: auto; }
+    .container { max-width: 1200px; margin: auto; }
 
     /* ============================================================
        HEADER
@@ -247,7 +249,7 @@
     .gc-stat-label { font-weight: 700; }
 
     /* ============================================================
-       SCHEDULE GRID — REFACTORED (3-Column Responsive)
+       SCHEDULE GRID — 3 COLUMNS (RESPONSIVE)
     ============================================================ */
     .section-title {
         font-family: var(--font-display); font-size: 0.85rem;
@@ -257,20 +259,29 @@
 
     .sched-grid {
         display: grid;
-        grid-template-columns: 1fr;
-        gap: 10px;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 12px;
         margin-bottom: 18px;
     }
 
-    @media (min-width: 640px) {
+    @media (max-width: 640px) {
         .sched-grid {
-            grid-template-columns: repeat(2, 1fr);
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
         }
     }
 
-    @media (min-width: 1024px) {
+    @media (min-width: 641px) and (max-width: 1024px) {
         .sched-grid {
             grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+        }
+    }
+
+    @media (min-width: 1025px) {
+        .sched-grid {
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
         }
     }
 
@@ -278,23 +289,34 @@
         position: relative;
         background: rgba(74, 0, 0, 0.4);
         backdrop-filter: blur(8px);
-        border: 1px solid rgba(255, 255, 255, 0.1);
+        border: 2px solid rgba(255, 255, 255, 0.1);
         border-radius: 12px;
-        padding: 12px;
+        padding: 14px;
         cursor: pointer;
         transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        aspect-ratio: 1;
         display: flex;
         flex-direction: column;
         justify-content: space-between;
         overflow: hidden;
         font-family: var(--font-body);
+        min-height: 220px;
+    }
+
+    /* Home game (maroon) */
+    .sched-card.home {
+        background: var(--color-maroon-home);
+        border-color: rgba(255, 100, 100, 0.3);
+    }
+
+    /* Away game (light gray semi-transparent) */
+    .sched-card.away {
+        background: var(--color-away);
+        border-color: rgba(200, 200, 200, 0.2);
     }
 
     .sched-card:hover {
         transform: scale(1.02);
-        background: rgba(90, 0, 0, 0.6);
-        border-color: rgba(255, 255, 255, 0.2);
+        border-color: rgba(255, 255, 255, 0.3);
     }
 
     .sched-card:active {
@@ -306,13 +328,14 @@
         display: flex;
         justify-content: space-between;
         align-items: flex-start;
-        margin-bottom: 8px;
+        margin-bottom: 10px;
+        gap: 4px;
     }
 
     .sched-card-date {
         font-weight: 700;
-        font-size: 0.75rem;
-        color: rgba(255, 255, 255, 0.6);
+        font-size: 0.8rem;
+        color: rgba(255, 255, 255, 0.7);
         letter-spacing: 0.5px;
         text-transform: uppercase;
     }
@@ -320,7 +343,7 @@
     .sched-card-time {
         font-weight: 700;
         font-size: 0.75rem;
-        color: rgba(255, 255, 255, 0.5);
+        color: rgba(255, 255, 255, 0.6);
     }
 
     /* Card center: Logo */
@@ -329,24 +352,24 @@
         justify-content: center;
         align-items: center;
         flex: 1;
-        margin-bottom: 8px;
+        margin: 12px 0;
     }
 
     .sched-card-logo {
-        width: 50px;
-        height: 50px;
+        width: 70px;
+        height: 70px;
         object-fit: contain;
     }
 
     .sched-card-logo-placeholder {
-        width: 50px;
-        height: 50px;
+        width: 70px;
+        height: 70px;
         border-radius: 50%;
         background: rgba(255, 255, 255, 0.1);
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 0.6rem;
+        font-size: 0.65rem;
         font-weight: 900;
         color: rgba(255, 255, 255, 0.3);
     }
@@ -355,21 +378,21 @@
     .sched-card-footer {
         display: flex;
         flex-direction: column;
-        gap: 4px;
+        gap: 6px;
         text-align: center;
     }
 
     .sched-card-opp {
         font-weight: 900;
-        font-size: 0.8rem;
-        color: rgba(255, 255, 255, 0.9);
+        font-size: 0.95rem;
+        color: rgba(255, 255, 255, 0.95);
         line-height: 1.2;
     }
 
     .sched-card-result {
-        font-size: 0.7rem;
+        font-size: 0.75rem;
         font-weight: 900;
-        color: rgba(255, 255, 255, 0.35);
+        color: rgba(255, 255, 255, 0.4);
         text-transform: uppercase;
         letter-spacing: 0.5px;
     }
@@ -387,21 +410,11 @@
     }
 
     /* ============================================================
-       QUICK STATS BUTTONS
+       QUICK STATS BUTTONS (REMOVED)
     ============================================================ */
     .quick-stats {
-        display: grid; grid-template-columns: 1fr 1fr;
-        gap: 8px; margin-bottom: 18px;
+        display: none;
     }
-    .stat-btn {
-        padding: 10px; border-radius: var(--radius-btn);
-        font-weight: 700; font-family: var(--font-body);
-        font-size: 0.75rem; cursor: pointer;
-        background: var(--color-btn-bg); color: var(--color-btn-txt);
-        border: 1px solid var(--color-btn-border); transition: all 0.15s;
-    }
-    .stat-btn:hover { opacity: 0.8; }
-    .stat-btn:active { transform: scale(0.96); }
 
     /* ============================================================
        MODAL
@@ -516,15 +529,7 @@
         <div style="font-weight:700;color:#888;font-size:0.9rem">Loading...</div>
     </div>
 
-    <!-- Quick Stats Buttons -->
-    <div class="quick-stats">
-        <button class="stat-btn" onclick="openModal('team-stats')">Team Stats</button>
-        <button class="stat-btn" onclick="openModal('h2h')">Head-to-Head</button>
-        <button class="stat-btn" onclick="openModal('recent-games')">Recent Games</button>
-        <button class="stat-btn" onclick="openModal('injuries')">Injuries / Roster</button>
-    </div>
-
-    <!-- Schedule Grid (Refactored) -->
+    <!-- Schedule Grid (All Games, 3 Columns) -->
     <div class="section-title">Schedule</div>
     <div id="sched-grid" class="sched-grid"><div class="loading" style="grid-column:1/-1">Loading schedule...</div></div>
 
@@ -828,18 +833,20 @@ function renderNextGame(events, cfg) {
 }
 
 /* ================================================================
-   RENDER — SCHEDULE GRID (Refactored)
+   RENDER — SCHEDULE GRID (ALL GAMES, 3 COLUMNS)
 ================================================================ */
 function renderScheduleGrid(events, cfg) {
     const el = document.getElementById('sched-grid');
     if (!events.length) { el.innerHTML = '<div class="loading" style="grid-column:1/-1">No schedule found.</div>'; return; }
 
     let html = '';
-    events.slice(0, 12).forEach((event, idx) => {
+    events.forEach((event, idx) => {
         const comp     = event.competitions?.[0];
         const aggies   = comp?.competitors?.find(c => c.team?.id === cfg.teamId);
         const opp      = comp?.competitors?.find(c => c.team?.id !== cfg.teamId);
-        const homeAway = aggies?.homeAway === 'home' ? 'vs' : '@';
+        const isHome   = aggies?.homeAway === 'home';
+        const homeAwayClass = isHome ? 'home' : 'away';
+        const homeAwayLabel = isHome ? 'vs' : '@';
         const oppName  = opp?.team?.shortDisplayName || opp?.team?.displayName || 'TBD';
         const gd       = new Date(event.date);
         const dateStr  = toCTDate(gd, { month:'short', day:'numeric' }).toUpperCase();
@@ -863,7 +870,7 @@ function renderScheduleGrid(events, cfg) {
         }
 
         html += `
-            <button class="sched-card ${resultClass}" onclick="openGameModal(${idx})">
+            <button class="sched-card ${homeAwayClass} ${resultClass}" onclick="openGameModal(${idx})">
                 <div class="sched-card-header">
                     <span class="sched-card-date">${dateStr}</span>
                     <span class="sched-card-time">${timeStr}</span>
@@ -872,7 +879,7 @@ function renderScheduleGrid(events, cfg) {
                     ${schedLogoImg(opp?.team)}
                 </div>
                 <div class="sched-card-footer">
-                    <div class="sched-card-opp">${homeAway} ${oppName}</div>
+                    <div class="sched-card-opp">${homeAwayLabel} ${oppName}</div>
                     <div class="sched-card-result">${result}</div>
                 </div>
             </button>`;
@@ -959,7 +966,7 @@ function openModal(type) {
             html += `
                 <div class="modal-stat">
                     <span class="modal-stat-label">${dateStr}</span>
-                    <span class="modal-stat-value" style="color:${won ? 'var(--color-win)' : 'var(--color-loss)'}">${won ? 'W' : 'L'} ${uS ?? '?'}-${tS ?? '?'} vs ${them?.team?.shortDisplayName || '?'}</span>
+                    <span class="modal-stat-value" style="color:${won ? 'var(--color-win)' : 'var(--color-loss)'}">${won ? 'W' : 'L'} ${uS ?? '?'}-${tS ?? '?'} vs ${them?.team?.shortDisplayName || 'TBD'}</span>
                 </div>`;
         });
         html += '</div>';
@@ -999,115 +1006,108 @@ function openGameModal(idx) {
 
     let statusHtml = '';
     if (done) {
-        const won = aggiesScore > oppScore;
-        statusHtml = `<div style="color:${won ? 'var(--color-win)' : 'var(--color-loss)'}; font-weight:900; font-size:1.1rem; margin:8px 0;">${won ? 'WIN' : 'LOSS'} ${aggiesScore}-${oppScore}</div>`;
-    } else if (comp?.status?.type?.state === 'in') {
-        statusHtml = `<div style="color:var(--color-live); font-weight:900; margin:8px 0;">LIVE: ${aggiesScore ?? '–'}-${oppScore ?? '–'}</div>`;
+        statusHtml = `<div class="modal-stat">
+                        <span class="modal-stat-label">Final</span>
+                        <span class="modal-stat-value">${aggiesScore ?? '?'} - ${oppScore ?? '?'}</span>
+                    </div>`;
+    } else {
+        statusHtml = `<div class="modal-stat">
+                        <span class="modal-stat-label">Scheduled</span>
+                        <span class="modal-stat-value">${timeStr} CDT</span>
+                    </div>`;
     }
 
     const body = document.getElementById('modal-body');
     body.innerHTML = `
-        <h2>${aggies?.team?.displayName} vs ${opp?.team?.displayName}</h2>
+        <h2>${aggies?.team?.displayName || 'Texas A&M'} vs ${opp?.team?.displayName || 'Opponent'}</h2>
         <div class="modal-content">
-            ${statusHtml}
             <div class="modal-stat">
                 <span class="modal-stat-label">Date</span>
-                <span class="modal-stat-value">${dateStr} at ${timeStr} CDT</span>
+                <span class="modal-stat-value">${dateStr}</span>
             </div>
+            ${statusHtml}
             <div class="modal-stat">
                 <span class="modal-stat-label">Network</span>
                 <span class="modal-stat-value">${network}</span>
-            </div>
-            <div class="modal-stat">
-                <span class="modal-stat-label">Our Record</span>
-                <span class="modal-stat-value">${getRecord(aggies)}</span>
-            </div>
-            <div class="modal-stat">
-                <span class="modal-stat-label">Their Record</span>
-                <span class="modal-stat-value">${getRecord(opp)}</span>
             </div>
         </div>`;
 
     document.getElementById('modal-overlay').classList.add('open');
 }
 
-function closeModal(e) {
-    if (e && e.target.id !== 'modal-overlay') return;
+function closeModal(event) {
+    if (event && event.target.id !== 'modal-overlay') return;
     document.getElementById('modal-overlay').classList.remove('open');
 }
 
 /* ================================================================
-   MAIN REFRESH
-================================================================ */
-async function refresh() {
-    const cfg = sportConfig[currentSport];
-
-    try {
-        allEvents = await fetchSchedule(cfg);
-        renderScheduleGrid(allEvents, cfg);
-    } catch(e) {
-        console.warn('Schedule fetch failed:', e);
-        document.getElementById('sched-grid').innerHTML = '<div class="loading" style="grid-column:1/-1">Schedule unavailable.</div>';
-    }
-
-    try {
-        const live = await fetchLiveScore(cfg);
-        if (live) {
-            const st = live.competitions?.[0]?.status?.type;
-            if (st?.state === 'in' || st?.completed) {
-                renderLiveScore(live, cfg);
-            } else {
-                renderNextGame(allEvents, cfg);
-            }
-        } else {
-            renderNextGame(allEvents, cfg);
-        }
-    } catch(e) {
-        console.warn('Score fetch failed:', e);
-        renderNextGame(allEvents, cfg);
-    }
-}
-
-/* ================================================================
-   TAB SWITCHING
-================================================================ */
-function setSport(sport) {
-    currentSport = sport;
-    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-    const idMap = { 'football':'btn-football', 'basketball-men':'btn-basketball', 'baseball':'btn-baseball' };
-    document.getElementById(idMap[sport]).classList.add('active');
-
-    document.getElementById('live-score').className = 'game-card empty';
-    document.getElementById('live-score').innerHTML = `<div style="font-weight:700;color:#888">Loading...</div>`;
-    document.getElementById('sched-grid').innerHTML = '<div class="loading" style="grid-column:1/-1">Loading...</div>';
-
-    refresh();
-}
-
-/* ================================================================
-   AUDIO PLAYER
+   AUDIO PLAYBACK
 ================================================================ */
 let currentAudio = null;
 
 function play(file) {
-    if (currentAudio) currentAudio.pause();
-    currentAudio = new Audio(file);
-    currentAudio.play().catch(e => console.warn('Playback failed:', e));
+    stopAudio();
+    currentAudio = new Audio(`media/${file}`);
+    currentAudio.play().catch(e => console.error('Audio play error:', e));
     document.getElementById('stop-btn').style.display = 'block';
+    currentAudio.onended = () => {
+        document.getElementById('stop-btn').style.display = 'none';
+        currentAudio = null;
+    };
 }
 
 function stopAudio() {
     if (currentAudio) {
         currentAudio.pause();
         currentAudio.currentTime = 0;
+        currentAudio = null;
     }
     document.getElementById('stop-btn').style.display = 'none';
 }
 
 /* ================================================================
-   INIT
+   MAIN LOGIC
 ================================================================ */
-refresh();
+async function setSport(sport) {
+    currentSport = sport;
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById(`btn-${sport.split('-')[0]}`).classList.add('active');
+
+    const cfg = sportConfig[sport];
+    
+    document.getElementById('live-score').innerHTML = '<div style="font-weight:700;color:#888;font-size:0.9rem">Loading...</div>';
+    document.getElementById('sched-grid').innerHTML = '<div class="loading" style="grid-column:1/-1">Loading schedule...</div>';
+
+    const liveEvent = await fetchLiveScore(cfg);
+    const schedule = await fetchSchedule(cfg);
+    
+    allEvents = schedule;
+
+    if (liveEvent) {
+        renderLiveScore(liveEvent, cfg);
+    } else {
+        renderNextGame(schedule, cfg);
+    }
+
+    renderScheduleGrid(schedule, cfg);
+}
+
+/* Initialize */
+(async () => {
+    const cfg = sportConfig[currentSport];
+    const liveEvent = await fetchLiveScore(cfg);
+    const schedule = await fetchSchedule(cfg);
+    
+    allEvents = schedule;
+
+    if (liveEvent) {
+        renderLiveScore(liveEvent, cfg);
+    } else {
+        renderNextGame(schedule, cfg);
+    }
+
+    renderScheduleGrid(schedule, cfg);
+})();
 </script>
 </body>
 </html>
