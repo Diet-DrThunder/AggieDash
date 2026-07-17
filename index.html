@@ -429,7 +429,7 @@
     }
     .modal-overlay.open { display: flex; }
     .modal {
-        background: var(--color-card-bg);
+        background: var(--color-maroon);
         border-radius: var(--radius-card);
         padding: 20px;
         width: min(440px, 90vw); max-height: 85vh;
@@ -441,29 +441,7 @@
         position: absolute; top: 12px; right: 12px;
         background: none; border: none;
         font-size: 1.5rem; cursor: pointer;
-        color: var(--color-card-text);
-    }
-    .modal h2 {
-        margin: 0 0 12px 0;
-        font-family: var(--font-display);
-        color: var(--color-card-text);
-        font-size: 1.3rem;
-    }
-    .modal-content {
-        display: grid; gap: 12px;
-    }
-    .modal-stat {
-        display: grid; grid-template-columns: 120px 1fr;
-        gap: 8px; padding-bottom: 8px;
-        border-bottom: 1px solid var(--color-sched-divider);
-    }
-    .modal-stat-label {
-        font-weight: 700; color: var(--color-card-text);
-        font-size: 0.8rem;
-    }
-    .modal-stat-value {
-        color: var(--color-sched-opp);
-        font-size: 0.8rem;
+        color: #ffffff;
     }
 
     /* Matchup header: away logo — @ — home logo */
@@ -474,57 +452,58 @@
     }
     .mm-team { display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center; }
     .mm-team img, .mm-team .gc-logo-placeholder { width: 48px; height: 48px; }
-    .mm-name { font-weight: 900; font-size: 0.8rem; color: var(--color-card-text); }
-    .mm-record { font-size: 0.68rem; color: var(--color-card-record); font-weight: 700; }
-    .mm-vs { font-family: var(--font-display); font-size: 1rem; color: var(--color-card-record); }
+    .mm-name { font-weight: 900; font-size: 0.8rem; color: #ffffff; }
+    .mm-record { font-size: 0.68rem; color: rgba(255,255,255,0.65); font-weight: 700; }
+    .mm-vs { font-family: var(--font-display); font-size: 1rem; color: rgba(255,255,255,0.65); }
+    .modal .section-title { color: rgba(255,255,255,0.75); }
+    .modal .loading { color: rgba(255,255,255,0.55); }
 
     /* Stat comparison */
     .modal-compare { margin-top: 10px; }
     .cmp-header {
         display: flex; justify-content: space-between;
         font-size: 0.68rem; font-weight: 900; text-transform: uppercase;
-        letter-spacing: 0.5px; color: var(--color-card-record);
+        letter-spacing: 0.5px; color: rgba(255,255,255,0.65);
         margin-bottom: 6px; padding: 0 2px;
     }
     .cmp-row {
         display: grid; grid-template-columns: 44px 1fr 44px;
         align-items: center; gap: 8px;
         padding: 7px 0;
-        border-bottom: 1px solid var(--color-sched-divider);
+        border-bottom: 1px solid rgba(255,255,255,0.12);
     }
     .cmp-val {
         font-weight: 700; font-size: 0.8rem;
-        color: var(--color-sched-opp); text-align: center;
+        color: #ffffff; text-align: center;
     }
-    .cmp-val.lead { color: var(--color-win); font-weight: 900; }
+    .cmp-val.lead { color: #8ce99a; font-weight: 900; }
     .cmp-mid { display: flex; flex-direction: column; gap: 3px; }
     .cmp-label {
         font-size: 0.62rem; font-weight: 700; text-align: center;
-        color: var(--color-card-record); text-transform: uppercase; letter-spacing: 0.3px;
+        color: rgba(255,255,255,0.65); text-transform: uppercase; letter-spacing: 0.3px;
     }
     .cmp-bars { display: flex; gap: 2px; }
     .cmp-bar {
         flex: 1; height: 5px; border-radius: 3px;
-        background: var(--color-sched-bg); overflow: hidden;
+        background: rgba(255,255,255,0.15); overflow: hidden;
         display: flex;
     }
     .cmp-bar.left { justify-content: flex-end; }
-    .cmp-bar span { display: block; height: 100%; background: var(--color-maroon); border-radius: 3px; }
-    [data-theme="dark"] .cmp-bar span { background: #ff8080; }
+    .cmp-bar span { display: block; height: 100%; border-radius: 3px; }
 
     /* Leaders */
     .leader-row {
         display: grid; grid-template-columns: 1fr auto 1fr;
         align-items: center; gap: 8px;
         padding: 8px 0;
-        border-bottom: 1px solid var(--color-sched-divider);
+        border-bottom: 1px solid rgba(255,255,255,0.12);
     }
     .leader-side { text-align: center; }
-    .leader-name { font-size: 0.72rem; font-weight: 700; color: var(--color-sched-opp); }
-    .leader-stat { font-size: 0.68rem; color: var(--color-card-record); font-weight: 700; }
+    .leader-name { font-size: 0.72rem; font-weight: 700; color: #ffffff; }
+    .leader-stat { font-size: 0.68rem; color: rgba(255,255,255,0.65); font-weight: 700; }
     .leader-cat {
         font-size: 0.62rem; font-weight: 900; text-transform: uppercase;
-        color: var(--color-card-record); letter-spacing: 0.3px; text-align: center;
+        color: rgba(255,255,255,0.65); letter-spacing: 0.3px; text-align: center;
     }
 
     /* ============================================================
@@ -1021,9 +1000,9 @@ async function fetchJSON(url) {
 }
 
 // Build one comparison row: away value on the left, home value on the right,
-// with a proportional mini-bar and the leading side bolded — same idea as
-// ESPN's matchup/team-stats comparison view.
-function statCompareRow(label, leftVal, rightVal, leftDisplay, rightDisplay) {
+// with a proportional mini-bar (colored per team) and the leading side
+// bolded — same idea as ESPN's matchup/team-stats comparison view.
+function statCompareRow(label, leftVal, rightVal, leftColor, rightColor, leftDisplay, rightDisplay) {
     const l = parseNum(leftVal), r = parseNum(rightVal);
     const max = Math.max(l, r, 1);
     const lPct = Math.round((l / max) * 100);
@@ -1034,8 +1013,8 @@ function statCompareRow(label, leftVal, rightVal, leftDisplay, rightDisplay) {
             <div class="cmp-mid">
                 <div class="cmp-label">${label}</div>
                 <div class="cmp-bars">
-                    <div class="cmp-bar left"><span style="width:${lPct}%"></span></div>
-                    <div class="cmp-bar right"><span style="width:${rPct}%"></span></div>
+                    <div class="cmp-bar left"><span style="width:${lPct}%;background:${leftColor}"></span></div>
+                    <div class="cmp-bar right"><span style="width:${rPct}%;background:${rightColor}"></span></div>
                 </div>
             </div>
             <div class="cmp-val ${r > l ? 'lead' : ''}">${rightDisplay ?? rightVal}</div>
@@ -1043,7 +1022,7 @@ function statCompareRow(label, leftVal, rightVal, leftDisplay, rightDisplay) {
 }
 
 // Pull actual game stats (final or in-progress) out of the summary boxscore.
-function buildBoxscoreComparison(summary, awayTeamId, homeTeamId) {
+function buildBoxscoreComparison(summary, awayTeamId, homeTeamId, colors) {
     const teams = summary?.boxscore?.teams;
     if (!teams || teams.length < 2) return null;
     const awayBox = teams.find(t => t.team?.id === awayTeamId);
@@ -1055,14 +1034,14 @@ function buildBoxscoreComparison(summary, awayTeamId, homeTeamId) {
         const homeStat = homeBox.statistics.find(s => s.name === stat.name);
         if (!homeStat) return;
         const label = stat.label || stat.displayName || stat.name;
-        rows += statCompareRow(label, stat.displayValue, homeStat.displayValue);
+        rows += statCompareRow(label, stat.displayValue, homeStat.displayValue, colors.away, colors.home);
     });
     return rows || null;
 }
 
 // Pull season-average stats for both teams (used pregame, before any
 // boxscore data exists).
-async function buildSeasonComparison(cfg, awayTeamId, homeTeamId) {
+async function buildSeasonComparison(cfg, awayTeamId, homeTeamId, colors) {
     const url = id => `${ESPN}/${cfg.espnSport}/${cfg.espnLeague}/teams/${id}/statistics`;
     const [awayData, homeData] = await Promise.all([fetchJSON(url(awayTeamId)), fetchJSON(url(homeTeamId))]);
     if (!awayData || !homeData) return null;
@@ -1082,7 +1061,7 @@ async function buildSeasonComparison(cfg, awayTeamId, homeTeamId) {
         const aStat = findStat(aCat, w.stat), hStat = findStat(hCat, w.stat);
         if (aStat && hStat) {
             found++;
-            rows += statCompareRow(w.label, aStat.displayValue, hStat.displayValue);
+            rows += statCompareRow(w.label, aStat.displayValue, hStat.displayValue, colors.away, colors.home);
         }
     });
     return found ? rows : null;
@@ -1136,24 +1115,14 @@ async function openGameModal(idx) {
     const comp = event.competitions?.[0];
     const away = comp.competitors.find(c => c.homeAway === 'away');
     const home = comp.competitors.find(c => c.homeAway === 'home');
-    const gd = new Date(event.date);
-    const dateStr = toCTDate(gd, { weekday:'long', month:'long', day:'numeric' });
-    const timeStr = toCT(gd);
-    const network = comp.broadcasts?.[0]?.names?.[0] || 'TBD';
-    const state = comp?.status?.type?.state;
-    const done = comp?.status?.type?.completed;
 
-    const awayScore = getScore(away);
-    const homeScore = getScore(home);
-
-    let statusHtml = '';
-    if (done) {
-        statusHtml = `<div class="modal-stat"><span class="modal-stat-label">Final</span><span class="modal-stat-value">${away.team.shortDisplayName} ${awayScore ?? '?'} – ${homeScore ?? '?'} ${home.team.shortDisplayName}</span></div>`;
-    } else if (state === 'in') {
-        statusHtml = `<div class="modal-stat"><span class="modal-stat-label">Live</span><span class="modal-stat-value">${away.team.shortDisplayName} ${awayScore ?? '0'} – ${homeScore ?? '0'} ${home.team.shortDisplayName}</span></div>`;
-    } else {
-        statusHtml = `<div class="modal-stat"><span class="modal-stat-label">Scheduled</span><span class="modal-stat-value">${timeStr} CDT</span></div>`;
-    }
+    // A&M's bar is always white; the opponent's bar uses their own team color.
+    const awayIsAggies = away.team?.id === cfg.teamId;
+    const teamBarColor = (team, isAggies) => isAggies ? '#ffffff' : `#${team?.color || '500000'}`;
+    const colors = {
+        away: teamBarColor(away.team, awayIsAggies),
+        home: teamBarColor(home.team, !awayIsAggies),
+    };
 
     const body = document.getElementById('modal-body');
     body.innerHTML = `
@@ -1161,11 +1130,6 @@ async function openGameModal(idx) {
             <div class="mm-team">${logoImg(away.team)}<div class="mm-name">${away.team.shortDisplayName}</div><div class="mm-record">${getRecord(away)}</div></div>
             <div class="mm-vs">@</div>
             <div class="mm-team">${logoImg(home.team)}<div class="mm-name">${home.team.shortDisplayName}</div><div class="mm-record">${getRecord(home)}</div></div>
-        </div>
-        <div class="modal-content">
-            <div class="modal-stat"><span class="modal-stat-label">Date</span><span class="modal-stat-value">${dateStr}</span></div>
-            ${statusHtml}
-            <div class="modal-stat"><span class="modal-stat-label">Network</span><span class="modal-stat-value">${network}</span></div>
         </div>
         <div id="modal-compare" class="modal-compare">
             <div class="loading" style="padding:16px 0;">Loading matchup stats...</div>
@@ -1186,11 +1150,11 @@ async function openGameModal(idx) {
 
     let compareHtml = '';
 
-    const boxRows = summary ? buildBoxscoreComparison(summary, away.team.id, home.team.id) : null;
+    const boxRows = summary ? buildBoxscoreComparison(summary, away.team.id, home.team.id, colors) : null;
     if (boxRows) {
         compareHtml += `<div class="section-title" style="margin-top:4px;">Game Stats</div><div class="cmp-header"><span>${away.team.shortDisplayName}</span><span>${home.team.shortDisplayName}</span></div>${boxRows}`;
     } else {
-        const seasonRows = await buildSeasonComparison(cfg, away.team.id, home.team.id);
+        const seasonRows = await buildSeasonComparison(cfg, away.team.id, home.team.id, colors);
         if (modalEvent !== event) return;
         if (seasonRows) {
             compareHtml += `<div class="section-title" style="margin-top:4px;">Season Averages</div><div class="cmp-header"><span>${away.team.shortDisplayName}</span><span>${home.team.shortDisplayName}</span></div>${seasonRows}`;
