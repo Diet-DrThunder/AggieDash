@@ -146,12 +146,33 @@
     .mode-toggle svg { width: 16px; height: 16px; display: block; }
 
     /* ============================================================
+       CONTROLS ROW (Season + Sports)
+    ============================================================ */
+    .controls-row {
+        display: flex; gap: 8px; margin-bottom: 12px; align-items: center;
+        flex-wrap: wrap;
+    }
+    .season-selector {
+        display: flex; gap: 4px; background: var(--color-tabs-bg);
+        border-radius: var(--radius-card); padding: 4px;
+    }
+    .season-btn {
+        padding: 8px 12px; cursor: pointer;
+        background: transparent; border: 1px solid transparent;
+        border-radius: 8px; color: var(--color-tab-inactive);
+        font-weight: 700; font-family: var(--font-body);
+        font-size: 0.75rem; transition: all 0.2s;
+    }
+    .season-btn:hover { opacity: 0.75; }
+    .season-btn.active { background: var(--color-tab-active-bg); color: var(--color-tab-active-txt); }
+
+    /* ============================================================
        SPORT TABS
     ============================================================ */
     .tabs {
         display: flex; gap: 6px; margin-bottom: 14px;
         background: var(--color-tabs-bg);
-        border-radius: var(--radius-card); padding: 5px;
+        border-radius: var(--radius-card); padding: 5px; flex: 1;
     }
     .tab-btn {
         flex: 1; padding: 10px 4px; cursor: pointer;
@@ -165,8 +186,6 @@
 
     /* ============================================================
        GAME CARD
-       Strict 3-col grid keeps both team columns identical width
-       so logos / names / records are always at the same altitude.
     ============================================================ */
     .game-card {
         background: var(--color-card-bg);
@@ -174,14 +193,10 @@
         padding: 18px 12px; margin-bottom: 14px;
         min-height: 130px; box-shadow: var(--shadow-card);
         display: grid; grid-template-columns: 1fr auto 1fr;
-        /* stretch so gc-center fills full height; teams align to top */
         align-items: start;
         gap: 8px; transition: background 0.25s;
     }
-    /* Center column stays vertically centered within the card */
-    .game-card .gc-center {
-        align-self: center;
-    }
+    .game-card .gc-center { align-self: center; }
     .game-card.empty {
         display: flex; flex-direction: column;
         align-items: center; justify-content: center;
@@ -190,12 +205,6 @@
     .gc-empty-label  { font-family: var(--font-display); font-size: 1.3rem; color: var(--color-card-text); letter-spacing: 2px; }
     .gc-empty-record { color: var(--color-card-record); font-size: 0.82rem; font-weight: 700; }
 
-    /* Team columns use CSS grid with 3 fixed rows:
-       row 1 = logo (fixed var(--logo-size))
-       row 2 = name + optional rank badge (fixed 1.4em)
-       row 3 = record (fixed 1em)
-       Both .gc-team columns share the SAME row heights via the
-       outer game-card grid — so everything lines up perfectly. */
     .gc-team {
         display: grid;
         grid-template-rows: var(--logo-size) 1.8em 1.2em;
@@ -214,7 +223,6 @@
         display: flex; align-items: center; justify-content: center;
         font-size: 0.62rem; font-weight: 900; color: #aaa; letter-spacing: 0.5px;
     }
-    /* Name row: rank badge + team name, vertically centered in its row */
     .gc-name-row {
         display: flex; align-items: center; justify-content: center;
         gap: 4px; flex-wrap: wrap; width: 100%;
@@ -227,7 +235,6 @@
         padding: 1px 5px; border-radius: 4px; white-space: nowrap;
         flex-shrink: 0;
     }
-    /* Record row — always present even if empty, keeps rows aligned */
     .gc-record {
         font-size: 0.65rem; font-weight: 700;
         color: var(--color-card-record);
@@ -235,7 +242,6 @@
         width: 100%;
     }
 
-    /* Center column */
     .gc-center  { text-align: center; padding: 0 4px; }
     .gc-label   { font-family: var(--font-display); font-size: clamp(1.1rem,4.5vw,1.5rem); color: var(--color-card-text); letter-spacing: 3px; }
     .gc-status  { font-size: clamp(0.58rem,2vw,0.7rem); font-weight: 900; color: var(--color-live); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 2px; }
@@ -244,38 +250,113 @@
     .gc-time    { font-size: 0.65rem; color: #888; }
     .gc-network { font-size: 0.6rem;  color: #aaa; margin-top: 2px; }
 
+    /* Live stats row */
+    .gc-stats {
+        font-size: 0.6rem; color: var(--color-text-sub);
+        display: flex; gap: 8px; justify-content: center;
+        flex-wrap: wrap; margin-top: 6px;
+    }
+    .gc-stat-item { display: flex; gap: 2px; }
+    .gc-stat-label { font-weight: 700; }
+
     /* ============================================================
-       SCHEDULE
+       SCHEDULE GRID
     ============================================================ */
     .section-title {
         font-family: var(--font-display); font-size: 0.85rem;
         letter-spacing: 2px; text-transform: uppercase;
         color: var(--color-section-title); margin: 0 0 10px 4px;
     }
-    .schedule {
-        background: var(--color-sched-bg);
+    .sched-grid {
+        display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+        margin-bottom: 18px;
+    }
+    .sched-card {
+        background: var(--color-card-bg);
         border: 1px solid var(--color-sched-border);
         border-radius: var(--radius-card);
-        padding: 14px; margin-bottom: 18px; transition: background 0.25s;
+        padding: 12px; cursor: pointer;
+        transition: all 0.2s; box-shadow: var(--shadow-card);
     }
-    .sched-item {
-        display: grid; grid-template-columns: 62px 1fr 80px;
-        gap: 6px; align-items: center;
-        padding: 9px 4px;
+    .sched-card:hover { transform: translateY(-2px); opacity: 0.9; }
+    .sched-card-date { font-weight: 700; font-size: 0.75rem; color: var(--color-sched-date); }
+    .sched-card-opp { 
+        font-weight: 900; font-size: 0.8rem;
+        color: var(--color-sched-opp); margin: 4px 0;
+    }
+    .sched-card-result {
+        font-size: 0.7rem; font-weight: 900;
+        color: var(--color-sched-upcoming);
+    }
+    .sched-card.won .sched-card-result { color: var(--color-win); }
+    .sched-card.lost .sched-card-result { color: var(--color-loss); }
+    .sched-card.live .sched-card-result { color: var(--color-live); }
+    .sched-card-logo { width: 40px; height: 40px; object-fit: contain; margin-top: 6px; }
+
+    /* ============================================================
+       QUICK STATS BUTTONS
+    ============================================================ */
+    .quick-stats {
+        display: grid; grid-template-columns: 1fr 1fr;
+        gap: 8px; margin-bottom: 18px;
+    }
+    .stat-btn {
+        padding: 10px; border-radius: var(--radius-btn);
+        font-weight: 700; font-family: var(--font-body);
+        font-size: 0.75rem; cursor: pointer;
+        background: var(--color-btn-bg); color: var(--color-btn-txt);
+        border: 1px solid var(--color-btn-border); transition: all 0.15s;
+    }
+    .stat-btn:hover { opacity: 0.8; }
+    .stat-btn:active { transform: scale(0.96); }
+
+    /* ============================================================
+       MODAL
+    ============================================================ */
+    .modal-overlay {
+        display: none;
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(0,0,0,0.7); z-index: 1000;
+        align-items: center; justify-content: center;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+        background: var(--color-card-bg);
+        border-radius: var(--radius-card);
+        padding: 20px;
+        max-width: 90vw; max-height: 85vh;
+        overflow-y: auto;
+        position: relative;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.8);
+    }
+    .modal-close {
+        position: absolute; top: 12px; right: 12px;
+        background: none; border: none;
+        font-size: 1.5rem; cursor: pointer;
+        color: var(--color-card-text);
+    }
+    .modal h2 {
+        margin: 0 0 12px 0;
+        font-family: var(--font-display);
+        color: var(--color-card-text);
+        font-size: 1.3rem;
+    }
+    .modal-content {
+        display: grid; gap: 12px;
+    }
+    .modal-stat {
+        display: grid; grid-template-columns: 120px 1fr;
+        gap: 8px; padding-bottom: 8px;
         border-bottom: 1px solid var(--color-sched-divider);
-        font-size: clamp(0.7rem, 2.4vw, 0.84rem);
     }
-    .sched-item:last-child { border-bottom: none; }
-    /* Next upcoming game gets a subtle highlight */
-    .sched-item.next-game  { background: var(--color-sched-next-bg); border-radius: 8px; padding: 9px 8px; }
-    .sched-date   { color: var(--color-sched-date); font-weight: 700; white-space: nowrap; }
-    .sched-opp    { color: var(--color-sched-opp); font-weight: 700; }
-    .sched-rank   { color: var(--color-sched-rank); font-size: 0.62rem; font-weight: 900; }
-    .sched-result { text-align: right; font-weight: 900; white-space: nowrap; }
-    .win          { color: var(--color-win); }
-    .loss         { color: var(--color-loss); }
-    .upcoming     { color: var(--color-sched-upcoming); font-size: 0.7rem; }
-    .live-pill    { color: var(--color-live); }
+    .modal-stat-label {
+        font-weight: 700; color: var(--color-card-text);
+        font-size: 0.8rem;
+    }
+    .modal-stat-value {
+        color: var(--color-sched-opp);
+        font-size: 0.8rem;
+    }
 
     /* ============================================================
        SOUNDS
@@ -308,46 +389,54 @@
 
     <header>
         <h1>AGGIE DASH</h1>
-        <!-- Shows ☀️ when in dark mode (click to go light), 🌙 when in light mode (click to go dark) -->
         <button class="mode-toggle" onclick="toggleMode()" id="mode-btn" title="Toggle light/dark">
-    <svg id="mode-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-        <!-- Sun rays + circle (shown in dark mode) -->
-        <g id="icon-sun">
-            <circle cx="12" cy="12" r="4"/>
-            <line x1="12" y1="2"  x2="12" y2="5"/>
-            <line x1="12" y1="19" x2="12" y2="22"/>
-            <line x1="2"  y1="12" x2="5"  y2="12"/>
-            <line x1="19" y1="12" x2="22" y2="12"/>
-            <line x1="4.22"  y1="4.22"  x2="6.34"  y2="6.34"/>
-            <line x1="17.66" y1="17.66" x2="19.78" y2="19.78"/>
-            <line x1="4.22"  y1="19.78" x2="6.34"  y2="17.66"/>
-            <line x1="17.66" y1="6.34"  x2="19.78" y2="4.22"/>
-        </g>
-        <!-- Moon crescent (shown in light mode, hidden by default) -->
-        <g id="icon-moon" style="display:none">
-            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
-        </g>
-    </svg>
-</button>
+            <svg id="mode-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <g id="icon-sun">
+                    <circle cx="12" cy="12" r="4"/>
+                    <line x1="12" y1="2"  x2="12" y2="5"/>
+                    <line x1="12" y1="19" x2="12" y2="22"/>
+                    <line x1="2"  y1="12" x2="5"  y2="12"/>
+                    <line x1="19" y1="12" x2="22" y2="12"/>
+                    <line x1="4.22"  y1="4.22"  x2="6.34"  y2="6.34"/>
+                    <line x1="17.66" y1="17.66" x2="19.78" y2="19.78"/>
+                    <line x1="4.22"  y1="19.78" x2="6.34"  y2="17.66"/>
+                    <line x1="17.66" y1="6.34"  x2="19.78" y2="4.22"/>
+                </g>
+                <g id="icon-moon" style="display:none">
+                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+                </g>
+            </svg>
+        </button>
     </header>
 
-    <div class="tabs">
-        <button id="btn-football"   class="tab-btn active" onclick="setSport('football')">Football</button>
-        <button id="btn-basketball" class="tab-btn"        onclick="setSport('basketball-men')">Basketball</button>
-        <button id="btn-baseball"   class="tab-btn"        onclick="setSport('baseball')">Baseball</button>
+    <div class="controls-row">
+        <div class="season-selector">
+            <button id="btn-current-season" class="season-btn active" onclick="setSeason('current')">Current</button>
+            <button id="btn-prev-season" class="season-btn" onclick="setSeason('previous')">Previous</button>
+        </div>
+        <div class="tabs" style="flex: 1;">
+            <button id="btn-football"   class="tab-btn active" onclick="setSport('football')">Football</button>
+            <button id="btn-basketball" class="tab-btn"        onclick="setSport('basketball-men')">Basketball</button>
+            <button id="btn-baseball"   class="tab-btn"        onclick="setSport('baseball')">Baseball</button>
+        </div>
     </div>
-
-
 
     <!-- Main card: next game preview OR live score -->
     <div id="live-score" class="game-card empty fadein">
         <div style="font-weight:700;color:#888;font-size:0.9rem">Loading...</div>
     </div>
 
-    <div class="schedule">
-        <div class="section-title">Schedule</div>
-        <div id="sched-list"><div class="loading">Loading schedule...</div></div>
+    <!-- Quick Stats Buttons -->
+    <div class="quick-stats">
+        <button class="stat-btn" onclick="openModal('team-stats')">Team Stats</button>
+        <button class="stat-btn" onclick="openModal('h2h')">Head-to-Head</button>
+        <button class="stat-btn" onclick="openModal('recent-games')">Recent Games</button>
+        <button class="stat-btn" onclick="openModal('injuries')">Injuries / Roster</button>
     </div>
+
+    <!-- Schedule Grid -->
+    <div class="section-title">Schedule</div>
+    <div id="sched-grid" class="sched-grid"><div class="loading" style="grid-column:1/-1">Loading schedule...</div></div>
 
     <div class="section-title">Sounds</div>
     <div class="sounds-grid">
@@ -361,15 +450,18 @@
     </div>
 
 </div>
+
+<!-- Modal Overlay -->
+<div id="modal-overlay" class="modal-overlay" onclick="closeModal(event)">
+    <div class="modal" onclick="event.stopPropagation()">
+        <button class="modal-close" onclick="closeModal()">✕</button>
+        <div id="modal-body"></div>
+    </div>
+</div>
+
 <script>
 /* ================================================================
    CONFIGURATION
-   Edit team IDs or add new sports here.
-   To look up an ESPN team ID, run in browser console:
-     fetch('https://site.api.espn.com/apis/site/v2/sports/SPORT/LEAGUE/teams?limit=500')
-       .then(r=>r.json()).then(d=>console.log(
-         d.sports[0].leagues[0].teams.find(t=>t.team.displayName.includes('Texas A&M'))
-       ))
 ================================================================ */
 const sportConfig = {
     'football': {
@@ -385,7 +477,7 @@ const sportConfig = {
     'baseball': {
         espnSport:  'baseball',
         espnLeague: 'college-baseball',
-        teamId:     '123',   // confirmed via ESPN teams API
+        teamId:     '123',
     },
 };
 
@@ -393,17 +485,16 @@ const sportConfig = {
    APP STATE
 ================================================================ */
 let currentSport = 'football';
+let currentSeason = 'current';
+let allEvents = [];
+let currentEvent = null;
 const ESPN = 'https://site.api.espn.com/apis/site/v2/sports';
-const TZ   = 'America/Chicago'; // all times shown in Central
+const TZ   = 'America/Chicago';
 
 /* ================================================================
    LIGHT / DARK MODE TOGGLE
-   ☀️ = currently dark, click to go light
-   🌙 = currently light, click to go dark
-   Preference saved to localStorage.
 ================================================================ */
 function setModeIcon(theme) {
-    // Sun shown in dark mode (click to go light), Moon in light mode (click to go dark)
     document.getElementById('icon-sun').style.display  = theme === 'dark'  ? '' : 'none';
     document.getElementById('icon-moon').style.display = theme === 'light' ? '' : 'none';
 }
@@ -424,36 +515,24 @@ function toggleMode() {
 /* ================================================================
    UTILITY HELPERS
 ================================================================ */
-
-// YYYYMMDD string for ESPN scoreboard endpoint
-function todayStr() {
-    const d = new Date();
-    return `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
-}
-
-// Format time in Central Time
 function toCT(date) {
     return date.toLocaleTimeString('en-US', { hour:'numeric', minute:'2-digit', timeZone: TZ });
 }
 
-// Format date in Central Time
 function toCTDate(date, opts) {
     return date.toLocaleDateString('en-US', { ...opts, timeZone: TZ });
 }
 
-// Extract numeric score — ESPN returns either { value: 74 } or "74"
 function getScore(c) {
     const v = c?.score?.value ?? c?.score;
     return (v !== undefined && v !== null) ? parseFloat(v) : null;
 }
 
-// AP poll rank — ESPN returns 99 for unranked
 function getRank(c) {
     const r = c?.curatedRank?.current || c?.rank;
     return (r && r < 99) ? r : null;
 }
 
-// W-L record from ESPN's records array
 function getRecord(c) {
     if (!c) return '';
     const recs = c.records || [];
@@ -461,7 +540,6 @@ function getRecord(c) {
     return r?.summary || recs[0]?.summary || '';
 }
 
-// Best logo URL: schedule API gives logos[], scoreboard gives logo string
 function getLogo(team) {
     if (!team) return '';
     if (team.logos?.length) {
@@ -473,44 +551,34 @@ function getLogo(team) {
     return '';
 }
 
-// <img> tag or TBD placeholder
 function logoImg(team) {
     const src = getLogo(team);
     if (!src) return `<div class="gc-logo-placeholder">TBD</div>`;
     return `<img class="gc-logo" src="${src}" onerror="this.outerHTML='<div class=\\'gc-logo-placeholder\\'>TBD</div>'" alt="">`;
 }
 
-// Rank badge HTML
 function rankBadge(rank) {
     return rank ? `<span class="gc-rank-badge">#${rank}</span>` : '';
 }
 
-
-
 /* ================================================================
    FETCH
 ================================================================ */
-
-// Live/today scoreboard — find A&M game if one exists.
-// Tries multiple ESPN scoreboard URLs because tournament games (SEC, NCAA)
-// are sometimes only returned with specific group/date parameters.
 async function fetchLiveScore(cfg) {
     const findAggies = events =>
         (events || []).find(e =>
             e.competitions?.[0]?.competitors?.some(c => c.team?.id === cfg.teamId)
         ) || null;
 
-    // CDT-correct date string
     const local = new Date(new Date().toLocaleString('en-US', {timeZone: 'America/Chicago'}));
     const ymd   = `${local.getFullYear()}${String(local.getMonth()+1).padStart(2,'0')}${String(local.getDate()).padStart(2,'0')}`;
     const base  = `${ESPN}/${cfg.espnSport}/${cfg.espnLeague}/scoreboard`;
 
-    // Try all these URLs in order, return first one that finds A&M
     const urls = [
-        base,                                    // default — live games
-        `${base}?dates=${ymd}`,                  // today CDT
-        `${base}?dates=${ymd}&groups=50&limit=300`, // SEC tournament
-        `${base}?dates=${ymd}&limit=300`,        // all today with higher limit
+        base,
+        `${base}?dates=${ymd}`,
+        `${base}?dates=${ymd}&groups=50&limit=300`,
+        `${base}?dates=${ymd}&limit=300`,
     ];
 
     for (const url of urls) {
@@ -520,21 +588,15 @@ async function fetchLiveScore(cfg) {
             const d = await r.json();
             const hit = findAggies(d.events);
             if (hit) return hit;
-        } catch(e) { /* try next */ }
+        } catch(e) { }
     }
     return null;
 }
 
-// Full season schedule.
-// Football straddles Aug-Jan — pre-August we fetch the prior year.
-async function fetchSchedule(cfg) {
+async function fetchSchedule(cfg, yearOffset = 0) {
     const now  = new Date();
-    let year   = now.getFullYear();
-    // Football: season is Aug-Jan, so Jan-Jul belongs to prior year
+    let year   = now.getFullYear() - yearOffset;
     if (cfg.espnLeague === 'college-football' && now.getMonth() < 7) year -= 1;
-    // Basketball: ESPN uses the year the season ENDS, so 2025-26 season = 2026
-    // No adjustment needed — current year is always correct for basketball
-    // Baseball: season is Feb-Jun, current year is correct
     const url  = `${ESPN}/${cfg.espnSport}/${cfg.espnLeague}/teams/${cfg.teamId}/schedule?season=${year}`;
     const res  = await fetch(url);
     if (!res.ok) throw new Error(res.status);
@@ -546,6 +608,7 @@ async function fetchSchedule(cfg) {
    RENDER — LIVE / TODAY SCORE CARD
 ================================================================ */
 function renderLiveScore(event, cfg = {}) {
+    currentEvent = event;
     const el   = document.getElementById('live-score');
     const comp = event.competitions[0];
     const home = comp.competitors.find(c => c.homeAway === 'home');
@@ -561,19 +624,14 @@ function renderLiveScore(event, cfg = {}) {
         let periodLabel = '';
         if (period) {
             if (cfg.espnLeague === 'college-football') {
-                // Football: Q1, Q2, Q3, Q4 (+ OT)
                 const qLabels = ['Q1','Q2','Q3','Q4'];
                 periodLabel = qLabels[period - 1] || `OT${period > 4 ? period - 4 : ''}`;
             } else if (cfg.espnLeague === 'mens-college-basketball') {
-                // Basketball: H1, H2 (+ OT)
                 const hLabels = ['H1','H2'];
                 periodLabel = hLabels[period - 1] || `OT${period > 2 ? period - 2 : ''}`;
             } else if (cfg.espnLeague === 'college-baseball') {
-                // Baseball: ordinal inning + top/bottom indicator
-                const ordinals = ['1st','2nd','3rd','4th','5th','6th','7th','8th','9th',
-                                  '10th','11th','12th','13th','14th','15th'];
+                const ordinals = ['1st','2nd','3rd','4th','5th','6th','7th','8th','9th','10th','11th','12th','13th','14th','15th'];
                 const inningLabel = ordinals[period - 1] || `${period}th`;
-                // ESPN's shortDetail often has "Top" or "Bot" — fall back to display
                 const detail = comp.status?.shortDetail || '';
                 const half = /top/i.test(detail) ? '▲' : /bot/i.test(detail) ? '▽' : '';
                 periodLabel = `${half} ${inningLabel}`.trim();
@@ -581,14 +639,11 @@ function renderLiveScore(event, cfg = {}) {
         }
         statusText = `LIVE  ${clock}${periodLabel ? '  ' + periodLabel : ''}`;
     } else {
-        // Format upcoming game time in CDT instead of ESPN's default EDT string
         const gameTime = event.date ? toCT(new Date(event.date)) + ' CDT' : 'UPCOMING';
         statusText = gameTime;
     }
 
     const network = comp.broadcasts?.[0]?.names?.[0] || comp.geoBroadcasts?.[0]?.media?.shortName || '';
-
-    // Hide pre-game UI when showing a live/today game
 
     el.className = 'game-card fadein';
     el.innerHTML = `
@@ -616,7 +671,6 @@ function renderNextGame(events, cfg) {
     const el  = document.getElementById('live-score');
     const now = Date.now();
 
-    // Compute W-L record from all completed games
     let w = 0, l = 0;
     events.forEach(e => {
         const comp = e.competitions?.[0];
@@ -628,13 +682,12 @@ function renderNextGame(events, cfg) {
     });
     const recStr = w + l > 0 ? `${w}-${l}` : '';
 
-    // Find next upcoming game
     const next = events.find(e =>
         new Date(e.date) > now && !e.competitions?.[0]?.status?.type?.completed
     );
 
-    // OFFSEASON — no upcoming games
     if (!next) {
+        currentEvent = null;
         el.className = 'game-card empty fadein';
         el.innerHTML = `
             <div class="gc-empty-label">OFFSEASON</div>
@@ -642,7 +695,7 @@ function renderNextGame(events, cfg) {
         return;
     }
 
-    // Build the next game card
+    currentEvent = next;
     const comp    = next.competitions[0];
     const aggies  = comp.competitors.find(c => c.team?.id === cfg.teamId);
     const opp     = comp.competitors.find(c => c.team?.id !== cfg.teamId);
@@ -675,87 +728,256 @@ function renderNextGame(events, cfg) {
 }
 
 /* ================================================================
-   RENDER — SCHEDULE LIST
+   RENDER — SCHEDULE GRID
 ================================================================ */
-function renderSchedule(events, cfg) {
-    const el = document.getElementById('sched-list');
-    if (!events.length) { el.innerHTML = '<div class="loading">No schedule found.</div>'; return; }
-
-    const now    = Date.now();
-    const nextEv = events.find(e =>
-        new Date(e.date) > now && !e.competitions?.[0]?.status?.type?.completed
-    );
+function renderScheduleGrid(events, cfg) {
+    const el = document.getElementById('sched-grid');
+    if (!events.length) { el.innerHTML = '<div class="loading" style="grid-column:1/-1">No schedule found.</div>'; return; }
 
     let html = '';
-    events.forEach(event => {
+    events.slice(0, 6).forEach((event, idx) => {
         const comp     = event.competitions?.[0];
         const aggies   = comp?.competitors?.find(c => c.team?.id === cfg.teamId);
         const opp      = comp?.competitors?.find(c => c.team?.id !== cfg.teamId);
         const homeAway = aggies?.homeAway === 'home' ? 'vs' : '@';
         const oppName  = opp?.team?.shortDisplayName || opp?.team?.displayName || 'TBD';
-        const oppRank  = getRank(opp);
         const gd       = new Date(event.date);
         const dateStr  = toCTDate(gd, { month:'short', day:'numeric' });
-        const timeStr  = toCT(gd) + ' CDT';
+        const timeStr  = toCT(gd);
         const done     = comp?.status?.type?.completed;
         const inProg   = comp?.status?.type?.state === 'in';
-        const isNext   = event === nextEv;
 
+        let resultClass = '';
         let result = '';
         if (done) {
             const us = getScore(aggies), them = getScore(opp);
             const won = us !== null && them !== null && us > them;
-            result = `<span class="sched-result ${won ? 'win' : 'loss'}">${won ? 'W' : 'L'} ${us ?? '?'}-${them ?? '?'}</span>`;
+            resultClass = won ? 'won' : 'lost';
+            result = `${won ? 'W' : 'L'} ${us ?? '?'}-${them ?? '?'}`;
         } else if (inProg) {
             const us = getScore(aggies) ?? '–', them = getScore(opp) ?? '–';
-            result = `<span class="sched-result live-pill">LIVE ${us}-${them}</span>`;
+            resultClass = 'live';
+            result = `LIVE ${us}-${them}`;
         } else {
-            result = `<span class="sched-result upcoming">${timeStr}</span>`;
+            result = timeStr;
         }
 
+        const oppLogo = getLogo(opp?.team);
+        const oppLogoHtml = oppLogo ? `<img class="sched-card-logo" src="${oppLogo}" alt="">` : '';
+
         html += `
-            <div class="sched-item${isNext ? ' next-game' : ''}">
-                <span class="sched-date">${dateStr}</span>
-                <span class="sched-opp">${homeAway} ${oppRank ? `<span class="sched-rank">#${oppRank} </span>` : ''}${oppName}</span>
-                ${result}
+            <div class="sched-card ${resultClass}" onclick="openGameModal(${idx})">
+                <div class="sched-card-date">${dateStr}</div>
+                <div class="sched-card-opp">${homeAway} ${oppName}</div>
+                <div class="sched-card-result">${result}</div>
+                ${oppLogoHtml}
             </div>`;
     });
     el.innerHTML = html;
 }
 
 /* ================================================================
-   MAIN REFRESH — runs on load + every 60 seconds
+   MODAL SYSTEM
+================================================================ */
+function openModal(type) {
+    const body = document.getElementById('modal-body');
+    const cfg = sportConfig[currentSport];
+    
+    if (type === 'team-stats') {
+        body.innerHTML = `
+            <h2>Team Stats</h2>
+            <div class="modal-content">
+                <div class="modal-stat">
+                    <span class="modal-stat-label">Wins</span>
+                    <span class="modal-stat-value">${allEvents.filter(e => {
+                        const comp = e.competitions?.[0];
+                        const us = comp?.competitors?.find(c => c.team?.id === cfg.teamId);
+                        const them = comp?.competitors?.find(c => c.team?.id !== cfg.teamId);
+                        if (!comp?.status?.type?.completed || !us || !them) return false;
+                        const uS = getScore(us), tS = getScore(them);
+                        return uS !== null && tS !== null && uS > tS;
+                    }).length}</span>
+                </div>
+                <div class="modal-stat">
+                    <span class="modal-stat-label">Losses</span>
+                    <span class="modal-stat-value">${allEvents.filter(e => {
+                        const comp = e.competitions?.[0];
+                        const us = comp?.competitors?.find(c => c.team?.id === cfg.teamId);
+                        const them = comp?.competitors?.find(c => c.team?.id !== cfg.teamId);
+                        if (!comp?.status?.type?.completed || !us || !them) return false;
+                        const uS = getScore(us), tS = getScore(them);
+                        return uS !== null && tS !== null && uS < tS;
+                    }).length}</span>
+                </div>
+                <div class="modal-stat">
+                    <span class="modal-stat-label">Upcoming</span>
+                    <span class="modal-stat-value">${allEvents.filter(e => new Date(e.date) > Date.now() && !e.competitions?.[0]?.status?.type?.completed).length}</span>
+                </div>
+                <div class="modal-stat">
+                    <span class="modal-stat-label">Note</span>
+                    <span class="modal-stat-value">More detailed stats coming soon!</span>
+                </div>
+            </div>`;
+    } else if (type === 'h2h') {
+        if (!currentEvent) {
+            body.innerHTML = `<h2>Head-to-Head</h2><p>No game selected. Tap a schedule card first.</p>`;
+        } else {
+            const comp = currentEvent.competitions?.[0];
+            const opp = comp?.competitors?.find(c => c.team?.id !== cfg.teamId);
+            body.innerHTML = `
+                <h2>H2H vs ${opp?.team?.displayName || 'Opponent'}</h2>
+                <div class="modal-content">
+                    <div class="modal-stat">
+                        <span class="modal-stat-label">All-Time Record</span>
+                        <span class="modal-stat-value">Data not available</span>
+                    </div>
+                    <div class="modal-stat">
+                        <span class="modal-stat-label">Last Meeting</span>
+                        <span class="modal-stat-value">Season history loading...</span>
+                    </div>
+                    <div class="modal-stat">
+                        <span class="modal-stat-label">Streak</span>
+                        <span class="modal-stat-value">TBD</span>
+                    </div>
+                </div>`;
+        }
+    } else if (type === 'recent-games') {
+        const recent = allEvents.filter(e => e.competitions?.[0]?.status?.type?.completed).slice(-5).reverse();
+        let html = '<h2>Recent Games</h2><div class="modal-content">';
+        recent.forEach(e => {
+            const comp = e.competitions?.[0];
+            const us = comp?.competitors?.find(c => c.team?.id === cfg.teamId);
+            const them = comp?.competitors?.find(c => c.team?.id !== cfg.teamId);
+            const uS = getScore(us), tS = getScore(them);
+            const won = uS !== null && tS !== null && uS > tS;
+            const gd = new Date(e.date);
+            const dateStr = toCTDate(gd, { month:'short', day:'numeric', year:'2-digit' });
+            html += `
+                <div class="modal-stat">
+                    <span class="modal-stat-label">${dateStr}</span>
+                    <span class="modal-stat-value" style="color:${won ? 'var(--color-win)' : 'var(--color-loss)'}">${won ? 'W' : 'L'} ${uS ?? '?'}-${tS ?? '?'} vs ${them?.team?.shortDisplayName || '?'}</span>
+                </div>`;
+        });
+        html += '</div>';
+        body.innerHTML = html;
+    } else if (type === 'injuries') {
+        body.innerHTML = `
+            <h2>Injuries / Roster</h2>
+            <div class="modal-content">
+                <div class="modal-stat">
+                    <span class="modal-stat-label">Status</span>
+                    <span class="modal-stat-value">Injury data not available via ESPN API</span>
+                </div>
+                <p style="font-size:0.75rem;color:var(--color-text-sub);">Check ESPN.com or your team's official site for up-to-date injury reports.</p>
+            </div>`;
+    }
+
+    document.getElementById('modal-overlay').classList.add('open');
+}
+
+function openGameModal(idx) {
+    const event = allEvents[idx];
+    const cfg = sportConfig[currentSport];
+    if (!event) return;
+
+    currentEvent = event;
+    const comp = event.competitions?.[0];
+    const aggies = comp?.competitors?.find(c => c.team?.id === cfg.teamId);
+    const opp = comp?.competitors?.find(c => c.team?.id !== cfg.teamId);
+    const gd = new Date(event.date);
+    const dateStr = toCTDate(gd, { weekday:'long', month:'long', day:'numeric' });
+    const timeStr = toCT(gd);
+    const network = comp.broadcasts?.[0]?.names?.[0] || 'TBD';
+    
+    const aggiesScore = getScore(aggies);
+    const oppScore = getScore(opp);
+    const done = comp?.status?.type?.completed;
+
+    let statusHtml = '';
+    if (done) {
+        const won = aggiesScore > oppScore;
+        statusHtml = `<div style="color:${won ? 'var(--color-win)' : 'var(--color-loss)'}; font-weight:900; font-size:1.1rem; margin:8px 0;">${won ? 'WIN' : 'LOSS'} ${aggiesScore}-${oppScore}</div>`;
+    } else if (comp?.status?.type?.state === 'in') {
+        statusHtml = `<div style="color:var(--color-live); font-weight:900; margin:8px 0;">LIVE: ${aggiesScore ?? '–'}-${oppScore ?? '–'}</div>`;
+    }
+
+    const body = document.getElementById('modal-body');
+    body.innerHTML = `
+        <h2>${aggies?.team?.displayName} vs ${opp?.team?.displayName}</h2>
+        <div class="modal-content">
+            ${statusHtml}
+            <div class="modal-stat">
+                <span class="modal-stat-label">Date</span>
+                <span class="modal-stat-value">${dateStr} at ${timeStr} CDT</span>
+            </div>
+            <div class="modal-stat">
+                <span class="modal-stat-label">Network</span>
+                <span class="modal-stat-value">${network}</span>
+            </div>
+            <div class="modal-stat">
+                <span class="modal-stat-label">Our Record</span>
+                <span class="modal-stat-value">${getRecord(aggies)}</span>
+            </div>
+            <div class="modal-stat">
+                <span class="modal-stat-label">Their Record</span>
+                <span class="modal-stat-value">${getRecord(opp)}</span>
+            </div>
+        </div>`;
+
+    document.getElementById('modal-overlay').classList.add('open');
+}
+
+function closeModal(e) {
+    if (e && e.target.id !== 'modal-overlay') return;
+    document.getElementById('modal-overlay').classList.remove('open');
+}
+
+/* ================================================================
+   MAIN REFRESH
 ================================================================ */
 async function refresh() {
     const cfg = sportConfig[currentSport];
-    let events = [];
+    const yearOffset = currentSeason === 'previous' ? 1 : 0;
 
     try {
-        events = await fetchSchedule(cfg);
-        renderSchedule(events, cfg);
+        allEvents = await fetchSchedule(cfg, yearOffset);
+        renderScheduleGrid(allEvents, cfg);
     } catch(e) {
         console.warn('Schedule fetch failed:', e);
-        document.getElementById('sched-list').innerHTML = '<div class="loading">Schedule unavailable.</div>';
+        document.getElementById('sched-grid').innerHTML = '<div class="loading" style="grid-column:1/-1">Schedule unavailable.</div>';
     }
 
     try {
         const live = await fetchLiveScore(cfg);
         if (live) {
             const st = live.competitions?.[0]?.status?.type;
-            // Only use live card if game is actually in progress or completed today
-            // If it's a future game (state=pre), fall through to next-game card which shows date+time
             if (st?.state === 'in' || st?.completed) {
                 renderLiveScore(live, cfg);
             } else {
-                renderNextGame(events, cfg);
+                renderNextGame(allEvents, cfg);
             }
         } else {
-            renderNextGame(events, cfg);
+            renderNextGame(allEvents, cfg);
         }
     } catch(e) {
         console.warn('Score fetch failed:', e);
-        renderNextGame(events, cfg);
+        renderNextGame(allEvents, cfg);
     }
+}
+
+/* ================================================================
+   SEASON SELECTOR
+================================================================ */
+function setSeason(season) {
+    currentSeason = season;
+    document.querySelectorAll('.season-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById(season === 'current' ? 'btn-current-season' : 'btn-prev-season').classList.add('active');
+
+    document.getElementById('live-score').className = 'game-card empty';
+    document.getElementById('live-score').innerHTML = `<div style="font-weight:700;color:#888">Loading...</div>`;
+    document.getElementById('sched-grid').innerHTML = '<div class="loading" style="grid-column:1/-1">Loading...</div>';
+
+    refresh();
 }
 
 /* ================================================================
@@ -767,9 +989,9 @@ function setSport(sport) {
     const idMap = { 'football':'btn-football', 'basketball-men':'btn-basketball', 'baseball':'btn-baseball' };
     document.getElementById(idMap[sport]).classList.add('active');
 
-    document.getElementById('live-score').className  = 'game-card empty';
-    document.getElementById('live-score').innerHTML  = `<div style="font-weight:700;color:#888">Loading...</div>`;
-    document.getElementById('sched-list').innerHTML  = '<div class="loading">Loading...</div>';
+    document.getElementById('live-score').className = 'game-card empty';
+    document.getElementById('live-score').innerHTML = `<div style="font-weight:700;color:#888">Loading...</div>`;
+    document.getElementById('sched-grid').innerHTML = '<div class="loading" style="grid-column:1/-1">Loading...</div>';
 
     refresh();
 }
@@ -799,7 +1021,7 @@ function stopAudio() {
 /* ================================================================
    INIT
 ================================================================ */
-setInterval(refresh, 60000); // refresh every 60 seconds
+setInterval(refresh, 60000);
 refresh();
 </script>
 </body>
