@@ -146,25 +146,12 @@
     .mode-toggle svg { width: 16px; height: 16px; display: block; }
 
     /* ============================================================
-       CONTROLS ROW (Season + Sports)
+       CONTROLS ROW (Sports Tabs Only)
     ============================================================ */
     .controls-row {
         display: flex; gap: 8px; margin-bottom: 12px; align-items: center;
         flex-wrap: wrap;
     }
-    .season-selector {
-        display: flex; gap: 4px; background: var(--color-tabs-bg);
-        border-radius: var(--radius-card); padding: 4px;
-    }
-    .season-btn {
-        padding: 8px 12px; cursor: pointer;
-        background: transparent; border: 1px solid transparent;
-        border-radius: 8px; color: var(--color-tab-inactive);
-        font-weight: 700; font-family: var(--font-body);
-        font-size: 0.75rem; transition: all 0.2s;
-    }
-    .season-btn:hover { opacity: 0.75; }
-    .season-btn.active { background: var(--color-tab-active-bg); color: var(--color-tab-active-txt); }
 
     /* ============================================================
        SPORT TABS
@@ -515,12 +502,9 @@
         </button>
     </header>
 
+    <!-- Sport Tabs Only -->
     <div class="controls-row">
-        <div class="season-selector">
-            <button id="btn-current-season" class="season-btn active" onclick="setSeason('current')">Current</button>
-            <button id="btn-prev-season" class="season-btn" onclick="setSeason('previous')">Previous</button>
-        </div>
-        <div class="tabs" style="flex: 1;">
+        <div class="tabs" style="width: 100%;">
             <button id="btn-football"   class="tab-btn active" onclick="setSport('football')">Football</button>
             <button id="btn-basketball" class="tab-btn"        onclick="setSport('basketball-men')">Basketball</button>
             <button id="btn-baseball"   class="tab-btn"        onclick="setSport('baseball')">Baseball</button>
@@ -591,7 +575,6 @@ const sportConfig = {
    APP STATE
 ================================================================ */
 let currentSport = 'football';
-let currentSeason = 'current';
 let allEvents = [];
 let currentEvent = null;
 const ESPN = 'https://site.api.espn.com/apis/site/v2/sports';
@@ -705,15 +688,20 @@ async function fetchLiveScore(cfg) {
     return null;
 }
 
-async function fetchSchedule(cfg, yearOffset = 0) {
+async function fetchSchedule(cfg) {
     const now  = new Date();
-    let year   = now.getFullYear() - yearOffset;
+    let year   = now.getFullYear();
     if (cfg.espnLeague === 'college-football' && now.getMonth() < 7) year -= 1;
     const url  = `${ESPN}/${cfg.espnSport}/${cfg.espnLeague}/teams/${cfg.teamId}/schedule?season=${year}`;
-    const res  = await fetch(url);
-    if (!res.ok) throw new Error(res.status);
-    const data = await res.json();
-    return data.events || [];
+    try {
+        const res  = await fetch(url);
+        if (!res.ok) throw new Error(res.status);
+        const data = await res.json();
+        return data.events || [];
+    } catch(e) {
+        console.error('Schedule fetch error:', e);
+        return [];
+    }
 }
 
 /* ================================================================
@@ -1053,10 +1041,9 @@ function closeModal(e) {
 ================================================================ */
 async function refresh() {
     const cfg = sportConfig[currentSport];
-    const yearOffset = currentSeason === 'previous' ? 1 : 0;
 
     try {
-        allEvents = await fetchSchedule(cfg, yearOffset);
+        allEvents = await fetchSchedule(cfg);
         renderScheduleGrid(allEvents, cfg);
     } catch(e) {
         console.warn('Schedule fetch failed:', e);
@@ -1082,21 +1069,6 @@ async function refresh() {
 }
 
 /* ================================================================
-   SEASON SELECTOR
-================================================================ */
-function setSeason(season) {
-    currentSeason = season;
-    document.querySelectorAll('.season-btn').forEach(b => b.classList.remove('active'));
-    document.getElementById(season === 'current' ? 'btn-current-season' : 'btn-prev-season').classList.add('active');
-
-    document.getElementById('live-score').className = 'game-card empty';
-    document.getElementById('live-score').innerHTML = `<div style="font-weight:700;color:#888">Loading...</div>`;
-    document.getElementById('sched-grid').innerHTML = '<div class="loading" style="grid-column:1/-1">Loading...</div>';
-
-    refresh();
-}
-
-/* ================================================================
    TAB SWITCHING
 ================================================================ */
 function setSport(sport) {
@@ -1107,7 +1079,7 @@ function setSport(sport) {
 
     document.getElementById('live-score').className = 'game-card empty';
     document.getElementById('live-score').innerHTML = `<div style="font-weight:700;color:#888">Loading...</div>`;
-    document.getElementById('sched-grid').innerHTML = '<div class="loading" style="grid-column:1/-1">Loading...</div>`;
+    document.getElementById('sched-grid').innerHTML = '<div class="loading" style="grid-column:1/-1">Loading...</div>';
 
     refresh();
 }
