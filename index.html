@@ -457,7 +457,12 @@
         margin-bottom: 14px;
     }
     .mm-team { display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center; }
-    .mm-team img, .mm-team .gc-logo-placeholder { width: 48px; height: 48px; }
+    .mm-team img, .mm-team .gc-logo-placeholder {
+        width: 48px; height: 48px;
+        background: #ffffff; border-radius: 50%;
+        padding: 6px; box-sizing: border-box;
+        object-fit: contain;
+    }
     .mm-name { font-weight: 900; font-size: 0.8rem; color: #ffffff; }
     .mm-record { font-size: 0.68rem; color: rgba(255,255,255,0.65); font-weight: 700; }
     .mm-vs { font-family: var(--font-display); font-size: 1rem; color: rgba(255,255,255,0.65); }
@@ -511,6 +516,44 @@
         font-size: 0.62rem; font-weight: 900; text-transform: uppercase;
         color: rgba(255,255,255,0.65); letter-spacing: 0.3px; text-align: center;
     }
+
+    /* ============================================================
+       RANKINGS & STANDINGS
+    ============================================================ */
+    .rank-toggle-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+    .rank-toggle-btn {
+        padding: 12px 10px; border-radius: var(--radius-btn);
+        background: var(--color-btn-bg); color: var(--color-btn-txt);
+        border: 1px solid var(--color-btn-border);
+        font-weight: 800; font-size: 0.8rem; cursor: pointer;
+        transition: all 0.15s;
+    }
+    .rank-toggle-btn:hover { opacity: 0.8; }
+    .rank-toggle-btn.active { background: var(--color-tab-active-bg); color: var(--color-tab-active-txt); }
+    .rank-panel { display: none; margin-bottom: 10px; }
+    .rank-panel.open { display: block; }
+    .rank-table {
+        width: 100%; border-collapse: collapse;
+        background: var(--color-card-bg); border-radius: var(--radius-card);
+        overflow: hidden; font-size: 0.72rem;
+    }
+    .rank-table th {
+        text-align: left; padding: 8px 6px;
+        font-size: 0.6rem; font-weight: 900; text-transform: uppercase;
+        letter-spacing: 0.3px; color: var(--color-section-title);
+        border-bottom: 1px solid var(--color-sched-divider);
+    }
+    .rank-table th.num, .rank-table td.num { text-align: center; }
+    .rank-table td {
+        padding: 7px 6px; color: var(--color-sched-opp);
+        border-bottom: 1px solid var(--color-sched-divider);
+        font-weight: 700;
+    }
+    .rank-table tr:last-child td { border-bottom: none; }
+    .rank-table tr.is-aggies td { color: var(--color-maroon); font-weight: 900; }
+    [data-theme="dark"] .rank-table tr.is-aggies td { color: #ff8080; }
+    .rank-team-cell { display: flex; align-items: center; gap: 6px; }
+    .rank-team-cell img { width: 20px; height: 20px; object-fit: contain; flex-shrink: 0; }
 
     /* ============================================================
        SOUNDS
@@ -594,6 +637,14 @@
     <div class="section-title">Schedule</div>
     <div id="sched-grid" class="sched-grid"><div class="loading" style="grid-column:1/-1">Loading schedule...</div></div>
 
+    <div class="section-title">Rankings &amp; Standings</div>
+    <div class="rank-toggle-row">
+        <button class="rank-toggle-btn" id="toggle-ap25" onclick="toggleRankPanel('ap25')">AP Top 25</button>
+        <button class="rank-toggle-btn" id="toggle-sec" onclick="toggleRankPanel('sec')">SEC Standings</button>
+    </div>
+    <div id="panel-ap25" class="rank-panel"></div>
+    <div id="panel-sec" class="rank-panel"></div>
+
     <div class="section-title">Sounds</div>
     <div id="audio-error" class="audio-error"></div>
     <div class="sounds-grid">
@@ -602,7 +653,6 @@
         <button class="audio-btn action" onclick="play('touchdown.mp3', this)">Touchdown</button>
         <button class="audio-btn action" onclick="play('homerun.mp3', this)">Rattlin' Bog</button>
         <button class="audio-btn"        onclick="play('Rifleman.mp3', this)">The Rifleman</button>
-        <button class="audio-btn"        onclick="play('Turbulence.mp3', this)">Turbulence</button>
         <button class="audio-btn stop-btn" id="stop-btn" onclick="stopAudio()" style="grid-column:1/-1;display:none;">Stop Audio</button>
     </div>
 
@@ -723,6 +773,140 @@ function schedLogoImg(team) {
 
 function rankBadge(rank) {
     return rank ? `<span class="gc-rank-badge">#${rank}</span>` : '';
+}
+
+/* ================================================================
+   RANKINGS & STANDINGS (AP Top 25 / SEC Standings)
+================================================================ */
+const rankCache = {}; // keyed by sport, holds { ap25, confMap } once loaded
+
+// Recursively find every conference group in a standings response,
+// regardless of exactly how deep/named the nesting is.
+function collectConferenceGroups(node, groups = [], seen = new Set()) {
+    if (!node || typeof node !== 'object' || seen.has(node)) return groups;
+    seen.add(node);
+    if (Array.isArray(node)) {
+        node.forEach(item => collectConferenceGroups(item, groups, seen));
+        return groups;
+    }
+    const label = node.name || node.abbreviation || node.shortName || '';
+    const entries = node.standings?.entries || node.entries;
+    if (label && Array.isArray(entries) && entries.length && entries[0]?.team) {
+        groups.push({ name: label, entries });
+    }
+    Object.keys(node).forEach(key => collectConferenceGroups(node[key], groups, seen));
+    return groups;
+}
+
+function standingsRecord(entry, patterns) {
+    const stats = entry.stats || [];
+    for (const re of patterns) {
+        const s = stats.find(x => re.test(x.name || '') || re.test(x.type || '') || re.test(x.shortDisplayName || '') || re.test(x.description || ''));
+        if (s && (s.displayValue || s.summary)) return s.displayValue || s.summary;
+    }
+    return '—';
+}
+
+const OVERALL_PATTERNS = [/^overall$/i, /overall/i, /^total$/i];
+const CONF_PATTERNS    = [/vsconf/i, /conferencerecord/i, /^conference$/i, /conf/i];
+
+async function loadRankingsData(cfg) {
+    if (rankCache[currentSport]) return rankCache[currentSport];
+
+    const year = cfg.season || new Date().getFullYear();
+    const [rankData, standingsData] = await Promise.all([
+        fetchJSON(`${ESPN}/${cfg.espnSport}/${cfg.espnLeague}/rankings`),
+        fetchJSON(`${ESPN}/${cfg.espnSport}/${cfg.espnLeague}/standings?season=${year}`),
+    ]);
+
+    const groups = standingsData ? collectConferenceGroups(standingsData) : [];
+    const confMap = {}; // teamId -> { overall, conference, groupName }
+    groups.forEach(g => {
+        g.entries.forEach(e => {
+            const id = e.team?.id;
+            if (!id) return;
+            confMap[id] = {
+                overall: standingsRecord(e, OVERALL_PATTERNS),
+                conference: standingsRecord(e, CONF_PATTERNS),
+                groupName: g.name,
+            };
+        });
+    });
+
+    let ap25 = null;
+    const poll = rankData?.rankings?.find(r => /^AP\s*Top\s*25$/i.test(r.name || '') || /^AP/i.test(r.shortName || ''));
+    if (poll?.ranks?.length) {
+        ap25 = poll.ranks.map(r => ({
+            rank: r.current,
+            team: r.team,
+            overall: r.recordSummary || confMap[r.team?.id]?.overall || '—',
+            conference: confMap[r.team?.id]?.conference || '—',
+        }));
+    }
+
+    const secGroup = groups.find(g => /southeastern|^sec$/i.test(g.name));
+
+    const result = { ap25, secEntries: secGroup?.entries || null };
+    rankCache[currentSport] = result;
+    return result;
+}
+
+function rankTableRow(teamId, teamObj, rankLabel, overall, conference, cfg) {
+    const isAggies = teamId === cfg.teamId;
+    const logo = getLogo(teamObj);
+    return `
+        <tr class="${isAggies ? 'is-aggies' : ''}">
+            <td class="num">${rankLabel}</td>
+            <td><div class="rank-team-cell">${logo ? `<img src="${logo}" alt="">` : ''}${teamObj?.shortDisplayName || teamObj?.displayName || 'TBD'}</div></td>
+            <td class="num">${overall}</td>
+            <td class="num">${conference}</td>
+        </tr>`;
+}
+
+async function toggleRankPanel(which) {
+    const cfg = sportConfig[currentSport];
+    const panel = document.getElementById(`panel-${which}`);
+    const btn = document.getElementById(`toggle-${which}`);
+    const otherWhich = which === 'ap25' ? 'sec' : 'ap25';
+    const otherPanel = document.getElementById(`panel-${otherWhich}`);
+    const otherBtn = document.getElementById(`toggle-${otherWhich}`);
+
+    const isOpen = panel.classList.contains('open');
+    otherPanel.classList.remove('open');
+    otherBtn.classList.remove('active');
+
+    if (isOpen) {
+        panel.classList.remove('open');
+        btn.classList.remove('active');
+        return;
+    }
+
+    panel.classList.add('open');
+    btn.classList.add('active');
+    panel.innerHTML = `<div class="loading" style="padding:14px 0;">Loading...</div>`;
+
+    const data = await loadRankingsData(cfg);
+
+    if (which === 'ap25') {
+        if (!data.ap25 || !data.ap25.length) {
+            panel.innerHTML = `<div class="loading" style="padding:14px 0;">AP Top 25 isn't available for this sport right now.</div>`;
+            return;
+        }
+        const rows = data.ap25.map(r => rankTableRow(r.team?.id, r.team, `#${r.rank}`, r.overall, r.conference, cfg)).join('');
+        panel.innerHTML = `<table class="rank-table"><thead><tr><th class="num">Rank</th><th>Team</th><th class="num">Overall</th><th class="num">Conf</th></tr></thead><tbody>${rows}</tbody></table>`;
+    } else {
+        if (!data.secEntries || !data.secEntries.length) {
+            panel.innerHTML = `<div class="loading" style="padding:14px 0;">SEC standings aren't available right now.</div>`;
+            return;
+        }
+        const rows = data.secEntries.map((e, i) => rankTableRow(
+            e.team?.id, e.team, i + 1,
+            standingsRecord(e, OVERALL_PATTERNS),
+            standingsRecord(e, CONF_PATTERNS),
+            cfg
+        )).join('');
+        panel.innerHTML = `<table class="rank-table"><thead><tr><th class="num">#</th><th>Team</th><th class="num">Overall</th><th class="num">Conf</th></tr></thead><tbody>${rows}</tbody></table>`;
+    }
 }
 
 /* ================================================================
@@ -968,7 +1152,7 @@ function renderScheduleGrid(events, cfg) {
                     ${schedLogoImg(opp?.team)}
                 </div>
                 <div class="sched-card-footer">
-                    <div class="sched-card-opp">${homeAwayLabel} ${oppName}</div>
+                    <div class="sched-card-opp">${homeAwayLabel} ${getRank(opp) ? `#${getRank(opp)} ` : ''}${oppName}</div>
                     <div class="sched-card-result">${result}</div>
                 </div>
             </button>`;
@@ -1149,9 +1333,9 @@ async function openGameModal(idx) {
     const body = document.getElementById('modal-body');
     body.innerHTML = `
         <div class="modal-matchup-header">
-            <div class="mm-team">${logoImg(away.team)}<div class="mm-name">${away.team.shortDisplayName}</div><div class="mm-record">${getRecord(away)}</div></div>
+            <div class="mm-team">${logoImg(away.team)}<div class="mm-name">${getRank(away) ? `#${getRank(away)} ` : ''}${away.team.shortDisplayName}</div><div class="mm-record">${getRecord(away)}</div></div>
             <div class="mm-vs">@</div>
-            <div class="mm-team">${logoImg(home.team)}<div class="mm-name">${home.team.shortDisplayName}</div><div class="mm-record">${getRecord(home)}</div></div>
+            <div class="mm-team">${logoImg(home.team)}<div class="mm-name">${getRank(home) ? `#${getRank(home)} ` : ''}${home.team.shortDisplayName}</div><div class="mm-record">${getRecord(home)}</div></div>
         </div>
         <div id="modal-compare" class="modal-compare">
             <div class="loading" style="padding:16px 0;">Loading matchup stats...</div>
@@ -1212,21 +1396,46 @@ function play(file, btn) {
     stopAudio();
     if (wasThisBtn) return; // clicking the same button again just stops it
 
-    // Files live at the repo root, not in a media/ subfolder.
-    currentAudio = new Audio(encodeURIComponent(file));
     currentBtn = btn || null;
 
-    currentAudio.play().then(() => {
+    // Filenames on GitHub Pages are case-sensitive, so if the exact casing
+    // doesn't match the repo file, try a couple of sensible variants before
+    // giving up — this is the most common way a track quietly breaks.
+    const candidates = [...new Set([
+        file,
+        file.toLowerCase(),
+        file.charAt(0).toUpperCase() + file.slice(1).toLowerCase(),
+    ])];
+
+    tryPlay(candidates, 0, file);
+}
+
+function tryPlay(candidates, i, originalFile) {
+    if (i >= candidates.length) {
+        showAudioError(`Couldn't play "${originalFile}". Check the file exists in the repo root and the filename matches exactly (case-sensitive).`);
+        currentBtn = null;
+        return;
+    }
+
+    const audio = new Audio(encodeURIComponent(candidates[i]));
+
+    audio.play().then(() => {
+        currentAudio = audio;
         if (currentBtn) currentBtn.classList.add('playing');
         document.getElementById('stop-btn').style.display = 'block';
-    }).catch(e => {
-        console.error('Audio play error:', e);
-        showAudioError(`Couldn't play "${file}". Check the file exists in the repo root and the filename matches exactly (case-sensitive).`);
-        currentAudio = null;
-        currentBtn = null;
+    }).catch(() => tryPlay(candidates, i + 1, originalFile));
+
+    // Some browsers resolve play() before a bad source has actually failed
+    // to load — catch that case too instead of leaving a silently-dead audio element.
+    audio.addEventListener('error', () => {
+        if (currentAudio === audio) {
+            currentAudio = null;
+            tryPlay(candidates, i + 1, originalFile);
+        }
     });
 
-    currentAudio.onended = () => {
+    audio.onended = () => {
+        if (currentAudio !== audio) return;
         if (currentBtn) currentBtn.classList.remove('playing');
         document.getElementById('stop-btn').style.display = 'none';
         currentAudio = null;
