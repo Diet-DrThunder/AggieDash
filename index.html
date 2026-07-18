@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
     <title>Aggie Dash</title>
+    <link rel="icon" type="image/png" href="adwhitecircle.png">
     <link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Nunito:wght@400;700;900&display=swap" rel="stylesheet">
     <style>
 
@@ -133,6 +134,11 @@
         margin: 0; letter-spacing: 3px;
         color: var(--color-title);
     }
+    .site-logo {
+        height: clamp(38px, 9vw, 58px);
+        display: inline-block;
+    }
+    [data-theme="light"] .site-logo { filter: invert(1); }
 
     /* Sun/Moon SVG button — top-right, circular */
     .mode-toggle {
@@ -549,7 +555,7 @@
 <div class="container">
 
     <header>
-        <h1>AGGIE DASH</h1>
+        <img src="ADwhite.png" alt="Aggie Dash" class="site-logo">
         <button class="mode-toggle" onclick="toggleMode()" id="mode-btn" title="Toggle light/dark">
             <svg id="mode-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                 <g id="icon-sun">
@@ -596,7 +602,7 @@
         <button class="audio-btn action" onclick="play('touchdown.mp3', this)">Touchdown</button>
         <button class="audio-btn action" onclick="play('homerun.mp3', this)">Rattlin' Bog</button>
         <button class="audio-btn"        onclick="play('Rifleman.mp3', this)">The Rifleman</button>
-        <button class="audio-btn"        onclick="play('', this)">Coming Soon</button>
+        <button class="audio-btn"        onclick="play('Turbulence.mp3', this)">Turbulence</button>
         <button class="audio-btn stop-btn" id="stop-btn" onclick="stopAudio()" style="grid-column:1/-1;display:none;">Stop Audio</button>
     </div>
 
@@ -1040,9 +1046,11 @@ function buildBoxscoreComparison(summary, awayTeamId, homeTeamId, colors) {
 }
 
 // Pull season-average stats for both teams (used pregame, before any
-// boxscore data exists).
+// boxscore data exists). Uses the current season explicitly so it starts
+// at 0 before kickoff and updates automatically as games are played.
 async function buildSeasonComparison(cfg, awayTeamId, homeTeamId, colors) {
-    const url = id => `${ESPN}/${cfg.espnSport}/${cfg.espnLeague}/teams/${id}/statistics`;
+    const year = cfg.season || new Date().getFullYear();
+    const url = id => `${ESPN}/${cfg.espnSport}/${cfg.espnLeague}/teams/${id}/statistics?season=${year}`;
     const [awayData, homeData] = await Promise.all([fetchJSON(url(awayTeamId)), fetchJSON(url(homeTeamId))]);
     if (!awayData || !homeData) return null;
 
@@ -1054,17 +1062,16 @@ async function buildSeasonComparison(cfg, awayTeamId, homeTeamId, colors) {
         { label: 'Rushing Yards / Game', cat: /rushing/i,          stat: /yardsPerGame|rushingYards/i },
     ];
 
+    // Show every row even if a stat hasn't been populated yet (preseason) —
+    // it'll just read 0.0 and start reflecting real numbers once games are
+    // played, since this fetches fresh every time the modal opens.
     let rows = '';
-    let found = 0;
     wanted.forEach(w => {
-        const aCat = findCategory(awayData, w.cat), hCat = findCategory(homeData, w.cat);
-        const aStat = findStat(aCat, w.stat), hStat = findStat(hCat, w.stat);
-        if (aStat && hStat) {
-            found++;
-            rows += statCompareRow(w.label, aStat.displayValue, hStat.displayValue, colors.away, colors.home);
-        }
+        const aStat = findStat(findCategory(awayData, w.cat), w.stat);
+        const hStat = findStat(findCategory(homeData, w.cat), w.stat);
+        rows += statCompareRow(w.label, aStat?.displayValue ?? '0.0', hStat?.displayValue ?? '0.0', colors.away, colors.home);
     });
-    return found ? rows : null;
+    return rows;
 }
 
 // Team leaders (passing/rushing/receiving) — mirrors the "Leaders" module
@@ -1103,6 +1110,28 @@ function buildLeaders(summary, awayTeamId, homeTeamId) {
     return rows || null;
 }
 
+const teamColorCache = {};
+function normalizeHex(raw, fallback) {
+    if (!raw) return fallback;
+    const hex = String(raw).replace('#', '').trim();
+    return /^[0-9a-fA-F]{6}$/.test(hex) ? `#${hex}` : fallback;
+}
+// The team object embedded in schedule/event data doesn't always carry a
+// color field, so fall back to ESPN's dedicated team-profile endpoint (the
+// canonical source for team branding) and cache the result.
+async function getTeamColor(cfg, team) {
+    const id = team?.id;
+    if (!id) return '#9aa0a6';
+    if (teamColorCache[id]) return teamColorCache[id];
+    let color = normalizeHex(team.color, null);
+    if (!color) {
+        const data = await fetchJSON(`${ESPN}/${cfg.espnSport}/${cfg.espnLeague}/teams/${id}`);
+        color = normalizeHex(data?.team?.color, '#9aa0a6');
+    }
+    teamColorCache[id] = color;
+    return color;
+}
+
 /* ================================================================
    MODAL SYSTEM
 ================================================================ */
@@ -1115,14 +1144,7 @@ async function openGameModal(idx) {
     const comp = event.competitions?.[0];
     const away = comp.competitors.find(c => c.homeAway === 'away');
     const home = comp.competitors.find(c => c.homeAway === 'home');
-
-    // A&M's bar is always white; the opponent's bar uses their own team color.
     const awayIsAggies = away.team?.id === cfg.teamId;
-    const teamBarColor = (team, isAggies) => isAggies ? '#ffffff' : `#${team?.color || '500000'}`;
-    const colors = {
-        away: teamBarColor(away.team, awayIsAggies),
-        home: teamBarColor(home.team, !awayIsAggies),
-    };
 
     const body = document.getElementById('modal-body');
     body.innerHTML = `
@@ -1140,10 +1162,14 @@ async function openGameModal(idx) {
     // Fetch the deeper comparison data asynchronously so the modal opens instantly.
     const compareEl = document.getElementById('modal-compare');
     const eventId = event.id || comp.id;
-    let summary = null;
-    if (eventId) {
-        summary = await fetchJSON(`${ESPN}/${cfg.espnSport}/${cfg.espnLeague}/summary?event=${eventId}`);
-    }
+
+    // A&M's bar is always white; the opponent's bar uses their real team color.
+    const [awayColor, homeColor, summary] = await Promise.all([
+        awayIsAggies ? Promise.resolve('#ffffff') : getTeamColor(cfg, away.team),
+        awayIsAggies ? getTeamColor(cfg, home.team) : Promise.resolve('#ffffff'),
+        eventId ? fetchJSON(`${ESPN}/${cfg.espnSport}/${cfg.espnLeague}/summary?event=${eventId}`) : Promise.resolve(null),
+    ]);
+    const colors = { away: awayColor, home: homeColor };
 
     // Bail out silently if the user already closed/switched games while loading.
     if (modalEvent !== event) return;
