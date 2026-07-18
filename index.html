@@ -529,31 +529,29 @@
         transition: all 0.15s;
     }
     .rank-toggle-btn:hover { opacity: 0.8; }
-    .rank-toggle-btn.active { background: var(--color-tab-active-bg); color: var(--color-tab-active-txt); }
-    .rank-panel { display: none; margin-bottom: 10px; }
-    .rank-panel.open { display: block; }
-    .rank-table {
-        width: 100%; border-collapse: collapse;
-        background: var(--color-card-bg); border-radius: var(--radius-card);
-        overflow: hidden; font-size: 0.72rem;
-    }
+
+    /* Rankings/standings tables always render inside the maroon modal popup,
+       so they're styled for that background specifically (not theme-dependent). */
+    .rank-table { width: 100%; border-collapse: collapse; font-size: 0.76rem; }
     .rank-table th {
-        text-align: left; padding: 8px 6px;
+        text-align: left; padding: 8px 4px;
         font-size: 0.6rem; font-weight: 900; text-transform: uppercase;
-        letter-spacing: 0.3px; color: var(--color-section-title);
-        border-bottom: 1px solid var(--color-sched-divider);
+        letter-spacing: 0.3px; color: rgba(255,255,255,0.6);
+        border-bottom: 1px solid rgba(255,255,255,0.2);
     }
     .rank-table th.num, .rank-table td.num { text-align: center; }
     .rank-table td {
-        padding: 7px 6px; color: var(--color-sched-opp);
-        border-bottom: 1px solid var(--color-sched-divider);
-        font-weight: 700;
+        padding: 8px 4px; color: #ffffff;
+        border-bottom: 1px solid rgba(255,255,255,0.12);
+        font-weight: 700; vertical-align: middle;
     }
     .rank-table tr:last-child td { border-bottom: none; }
-    .rank-table tr.is-aggies td { color: var(--color-maroon); font-weight: 900; }
-    [data-theme="dark"] .rank-table tr.is-aggies td { color: #ff8080; }
+    .rank-table tr.is-aggies { background: rgba(255,255,255,0.1); }
     .rank-team-cell { display: flex; align-items: center; gap: 6px; }
-    .rank-team-cell img { width: 20px; height: 20px; object-fit: contain; flex-shrink: 0; }
+    .rank-team-cell img {
+        width: 20px; height: 20px; object-fit: contain; flex-shrink: 0;
+        background: #ffffff; border-radius: 50%; padding: 2px; box-sizing: border-box;
+    }
 
     /* ============================================================
        SOUNDS
@@ -639,11 +637,9 @@
 
     <div class="section-title">Rankings &amp; Standings</div>
     <div class="rank-toggle-row">
-        <button class="rank-toggle-btn" id="toggle-ap25" onclick="toggleRankPanel('ap25')">AP Top 25</button>
-        <button class="rank-toggle-btn" id="toggle-sec" onclick="toggleRankPanel('sec')">SEC Standings</button>
+        <button class="rank-toggle-btn" onclick="openRankModal('ap25')">AP Top 25</button>
+        <button class="rank-toggle-btn" onclick="openRankModal('sec')">SEC Standings</button>
     </div>
-    <div id="panel-ap25" class="rank-panel"></div>
-    <div id="panel-sec" class="rank-panel"></div>
 
     <div class="section-title">Sounds</div>
     <div id="audio-error" class="audio-error"></div>
@@ -737,7 +733,7 @@ function getScore(c) {
 }
 
 function getRank(c) {
-    const r = c?.curatedRank?.current || c?.rank;
+    const r = c?.curatedRank?.current || c?.rank || apRankMap[c?.team?.id];
     return (r && r < 99) ? r : null;
 }
 
@@ -778,134 +774,105 @@ function rankBadge(rank) {
 /* ================================================================
    RANKINGS & STANDINGS (AP Top 25 / SEC Standings)
 ================================================================ */
-const rankCache = {}; // keyed by sport, holds { ap25, confMap } once loaded
 
-// Recursively find every conference group in a standings response,
-// regardless of exactly how deep/named the nesting is.
-function collectConferenceGroups(node, groups = [], seen = new Set()) {
-    if (!node || typeof node !== 'object' || seen.has(node)) return groups;
-    seen.add(node);
-    if (Array.isArray(node)) {
-        node.forEach(item => collectConferenceGroups(item, groups, seen));
-        return groups;
-    }
-    const label = node.name || node.abbreviation || node.shortName || '';
-    const entries = node.standings?.entries || node.entries;
-    if (label && Array.isArray(entries) && entries.length && entries[0]?.team) {
-        groups.push({ name: label, entries });
-    }
-    Object.keys(node).forEach(key => collectConferenceGroups(node[key], groups, seen));
-    return groups;
-}
+// SEC membership (as of the 2024 realignment) used as a fallback roster for
+// the standings table if ESPN's conference grouping can't be located. Each
+// team's name/logo/record is still pulled live from ESPN — this list only
+// decides which teams to ask about.
+const SEC_TEAM_IDS = ['245','251','201','333','61','99','57','2','8','142','96','2633','2579','145','344','238'];
 
-function standingsRecord(entry, patterns) {
-    const stats = entry.stats || [];
-    for (const re of patterns) {
-        const s = stats.find(x => re.test(x.name || '') || re.test(x.type || '') || re.test(x.shortDisplayName || '') || re.test(x.description || ''));
-        if (s && (s.displayValue || s.summary)) return s.displayValue || s.summary;
-    }
-    return '—';
-}
+let apRankMap = {};             // teamId -> current AP rank, used for badges app-wide
+let apPollCache = null;         // { sport: [ {current, team}, ... ] }
+const teamRecordCache = {};     // teamId -> { overall, conference }
+let rankModalToken = 0;         // guards against a stale async response overwriting a newer modal
 
-const OVERALL_PATTERNS = [/^overall$/i, /overall/i, /^total$/i];
-const CONF_PATTERNS    = [/vsconf/i, /conferencerecord/i, /^conference$/i, /conf/i];
-
-async function loadRankingsData(cfg) {
-    if (rankCache[currentSport]) return rankCache[currentSport];
-
-    const year = cfg.season || new Date().getFullYear();
-    const [rankData, standingsData] = await Promise.all([
-        fetchJSON(`${ESPN}/${cfg.espnSport}/${cfg.espnLeague}/rankings`),
-        fetchJSON(`${ESPN}/${cfg.espnSport}/${cfg.espnLeague}/standings?season=${year}`),
-    ]);
-
-    const groups = standingsData ? collectConferenceGroups(standingsData) : [];
-    const confMap = {}; // teamId -> { overall, conference, groupName }
-    groups.forEach(g => {
-        g.entries.forEach(e => {
-            const id = e.team?.id;
-            if (!id) return;
-            confMap[id] = {
-                overall: standingsRecord(e, OVERALL_PATTERNS),
-                conference: standingsRecord(e, CONF_PATTERNS),
-                groupName: g.name,
-            };
-        });
-    });
-
-    let ap25 = null;
+async function fetchApPoll(cfg) {
+    if (apPollCache && apPollCache.sport === currentSport) return apPollCache.ranks;
+    const rankData = await fetchJSON(`${ESPN}/${cfg.espnSport}/${cfg.espnLeague}/rankings`);
     const poll = rankData?.rankings?.find(r => /^AP\s*Top\s*25$/i.test(r.name || '') || /^AP/i.test(r.shortName || ''));
-    if (poll?.ranks?.length) {
-        ap25 = poll.ranks.map(r => ({
-            rank: r.current,
-            team: r.team,
-            overall: r.recordSummary || confMap[r.team?.id]?.overall || '—',
-            conference: confMap[r.team?.id]?.conference || '—',
-        }));
-    }
+    const ranks = poll?.ranks || [];
+    apPollCache = { sport: currentSport, ranks };
+    return ranks;
+}
 
-    const secGroup = groups.find(g => /southeastern|^sec$/i.test(g.name));
+// Fast, single-request pass just to populate rank badges shown throughout
+// the app (main card, schedule cards, modal header).
+async function refreshRankBadges(cfg) {
+    try {
+        const ranks = await fetchApPoll(cfg);
+        apRankMap = {};
+        ranks.forEach(r => { if (r.team?.id) apRankMap[r.team.id] = r.current; });
+    } catch (e) { /* badges just won't show — non-critical */ }
+}
 
-    const result = { ap25, secEntries: secGroup?.entries || null };
-    rankCache[currentSport] = result;
+// Live win-loss + conference record for one team, straight from its ESPN
+// team profile. Reads 0-0 before the season starts and updates on its own
+// since nothing here is cached across page loads.
+async function fetchTeamRecord(cfg, teamId) {
+    if (!teamId) return { overall: '0-0', conference: '0-0' };
+    if (teamRecordCache[teamId]) return teamRecordCache[teamId];
+    const data = await fetchJSON(`${ESPN}/${cfg.espnSport}/${cfg.espnLeague}/teams/${teamId}`);
+    const items = data?.team?.record?.items || [];
+    const overall = items.find(i => i.type === 'total')?.summary || items[0]?.summary || '0-0';
+    const conference = items.find(i => /vsconf/i.test(i.type || '') || /conference/i.test(i.description || i.name || ''))?.summary || '0-0';
+    const result = { overall, conference };
+    teamRecordCache[teamId] = result;
     return result;
 }
 
 function rankTableRow(teamId, teamObj, rankLabel, overall, conference, cfg) {
     const isAggies = teamId === cfg.teamId;
     const logo = getLogo(teamObj);
+    const name = teamObj?.shortDisplayName || teamObj?.displayName || teamObj?.name || teamObj?.nickname || 'TBD';
     return `
         <tr class="${isAggies ? 'is-aggies' : ''}">
             <td class="num">${rankLabel}</td>
-            <td><div class="rank-team-cell">${logo ? `<img src="${logo}" alt="">` : ''}${teamObj?.shortDisplayName || teamObj?.displayName || 'TBD'}</div></td>
+            <td><div class="rank-team-cell">${logo ? `<img src="${logo}" alt="">` : ''}${name}</div></td>
             <td class="num">${overall}</td>
             <td class="num">${conference}</td>
         </tr>`;
 }
 
-async function toggleRankPanel(which) {
+async function openRankModal(which) {
+    const myToken = ++rankModalToken;
+    modalEvent = null; // invalidate any in-flight game-modal fetch
     const cfg = sportConfig[currentSport];
-    const panel = document.getElementById(`panel-${which}`);
-    const btn = document.getElementById(`toggle-${which}`);
-    const otherWhich = which === 'ap25' ? 'sec' : 'ap25';
-    const otherPanel = document.getElementById(`panel-${otherWhich}`);
-    const otherBtn = document.getElementById(`toggle-${otherWhich}`);
 
-    const isOpen = panel.classList.contains('open');
-    otherPanel.classList.remove('open');
-    otherBtn.classList.remove('active');
+    document.getElementById('modal-body').innerHTML = `
+        <div class="section-title" style="margin-top:0;">${which === 'ap25' ? 'AP Top 25' : 'SEC Standings'}</div>
+        <div id="rank-modal-content"><div class="loading" style="padding:14px 0;">Loading...</div></div>`;
+    document.getElementById('modal-overlay').classList.add('open');
 
-    if (isOpen) {
-        panel.classList.remove('open');
-        btn.classList.remove('active');
-        return;
-    }
-
-    panel.classList.add('open');
-    btn.classList.add('active');
-    panel.innerHTML = `<div class="loading" style="padding:14px 0;">Loading...</div>`;
-
-    const data = await loadRankingsData(cfg);
+    const contentEl = () => document.getElementById('rank-modal-content');
 
     if (which === 'ap25') {
-        if (!data.ap25 || !data.ap25.length) {
-            panel.innerHTML = `<div class="loading" style="padding:14px 0;">AP Top 25 isn't available for this sport right now.</div>`;
+        const ranks = await fetchApPoll(cfg);
+        if (myToken !== rankModalToken || !contentEl()) return;
+        if (!ranks.length) {
+            contentEl().innerHTML = `<div class="loading" style="padding:14px 0;">AP Top 25 isn't available for this sport right now.</div>`;
             return;
         }
-        const rows = data.ap25.map(r => rankTableRow(r.team?.id, r.team, `#${r.rank}`, r.overall, r.conference, cfg)).join('');
-        panel.innerHTML = `<table class="rank-table"><thead><tr><th class="num">Rank</th><th>Team</th><th class="num">Overall</th><th class="num">Conf</th></tr></thead><tbody>${rows}</tbody></table>`;
+        const withRecords = await Promise.all(ranks.map(async r => ({
+            rank: r.current, team: r.team, ...(await fetchTeamRecord(cfg, r.team?.id)),
+        })));
+        if (myToken !== rankModalToken || !contentEl()) return;
+        const rows = withRecords.map(r => rankTableRow(r.team?.id, r.team, `#${r.rank}`, r.overall, r.conference, cfg)).join('');
+        contentEl().innerHTML = `<table class="rank-table"><thead><tr><th class="num">Rank</th><th>Team</th><th class="num">Overall</th><th class="num">Conf</th></tr></thead><tbody>${rows}</tbody></table>`;
     } else {
-        if (!data.secEntries || !data.secEntries.length) {
-            panel.innerHTML = `<div class="loading" style="padding:14px 0;">SEC standings aren't available right now.</div>`;
+        // SEC roster is fixed; record data is fetched live per team so it
+        // reads 0-0 before conference play starts and updates automatically.
+        const teams = await Promise.all(SEC_TEAM_IDS.map(async id => {
+            const profile = await fetchJSON(`${ESPN}/${cfg.espnSport}/${cfg.espnLeague}/teams/${id}`);
+            return profile?.team ? { team: profile.team, ...(await fetchTeamRecord(cfg, id)) } : null;
+        }));
+        if (myToken !== rankModalToken || !contentEl()) return;
+        const valid = teams.filter(Boolean);
+        if (!valid.length) {
+            contentEl().innerHTML = `<div class="loading" style="padding:14px 0;">SEC standings aren't available right now.</div>`;
             return;
         }
-        const rows = data.secEntries.map((e, i) => rankTableRow(
-            e.team?.id, e.team, i + 1,
-            standingsRecord(e, OVERALL_PATTERNS),
-            standingsRecord(e, CONF_PATTERNS),
-            cfg
-        )).join('');
-        panel.innerHTML = `<table class="rank-table"><thead><tr><th class="num">#</th><th>Team</th><th class="num">Overall</th><th class="num">Conf</th></tr></thead><tbody>${rows}</tbody></table>`;
+        const rows = valid.map((t, i) => rankTableRow(t.team?.id, t.team, i + 1, t.overall, t.conference, cfg)).join('');
+        contentEl().innerHTML = `<table class="rank-table"><thead><tr><th class="num">#</th><th>Team</th><th class="num">Overall</th><th class="num">Conf</th></tr></thead><tbody>${rows}</tbody></table>`;
     }
 }
 
@@ -1325,6 +1292,7 @@ async function openGameModal(idx) {
     if (!event) return;
 
     modalEvent = event;
+    rankModalToken++; // invalidate any in-flight rankings-modal fetch
     const comp = event.competitions?.[0];
     const away = comp.competitors.find(c => c.homeAway === 'away');
     const home = comp.competitors.find(c => c.homeAway === 'home');
@@ -1355,8 +1323,9 @@ async function openGameModal(idx) {
     ]);
     const colors = { away: awayColor, home: homeColor };
 
-    // Bail out silently if the user already closed/switched games while loading.
-    if (modalEvent !== event) return;
+    // Bail out silently if the user already closed/switched games (or opened
+    // the rankings modal) while loading.
+    if (modalEvent !== event || !document.getElementById('modal-compare')) return;
 
     let compareHtml = '';
 
@@ -1365,7 +1334,7 @@ async function openGameModal(idx) {
         compareHtml += `<div class="section-title" style="margin-top:4px;">Game Stats</div><div class="cmp-header"><span>${away.team.shortDisplayName}</span><span>${home.team.shortDisplayName}</span></div>${boxRows}`;
     } else {
         const seasonRows = await buildSeasonComparison(cfg, away.team.id, home.team.id, colors);
-        if (modalEvent !== event) return;
+        if (modalEvent !== event || !document.getElementById('modal-compare')) return;
         if (seasonRows) {
             compareHtml += `<div class="section-title" style="margin-top:4px;">Season Averages</div><div class="cmp-header"><span>${away.team.shortDisplayName}</span><span>${home.team.shortDisplayName}</span></div>${seasonRows}`;
         }
@@ -1376,6 +1345,7 @@ async function openGameModal(idx) {
         compareHtml += `<div class="section-title" style="margin-top:16px;">Leaders</div>${leaderRows}`;
     }
 
+    if (!compareEl) return;
     compareEl.innerHTML = compareHtml || `<div class="loading" style="padding:16px 0;">Detailed stats aren't available for this matchup yet.</div>`;
 }
 
@@ -1479,9 +1449,12 @@ async function setSport(sport) {
     document.getElementById('live-score').innerHTML = '<div style="font-weight:700;color:#888;font-size:0.9rem">Loading...</div>';
     document.getElementById('sched-grid').innerHTML = '<div class="loading" style="grid-column:1/-1">Loading schedule...</div>';
 
-    const liveEvent = await fetchLiveScore(cfg);
-    const schedule = await fetchSchedule(cfg);
-    
+    const [liveEvent, schedule] = await Promise.all([
+        fetchLiveScore(cfg),
+        fetchSchedule(cfg),
+        refreshRankBadges(cfg),
+    ]);
+
     allEvents = schedule;
 
     if (liveEvent) {
@@ -1510,9 +1483,12 @@ setInterval(async () => {
 /* Initialize */
 (async () => {
     const cfg = sportConfig[currentSport];
-    const liveEvent = await fetchLiveScore(cfg);
-    const schedule = await fetchSchedule(cfg);
-    
+    const [liveEvent, schedule] = await Promise.all([
+        fetchLiveScore(cfg),
+        fetchSchedule(cfg),
+        refreshRankBadges(cfg),
+    ]);
+
     allEvents = schedule;
 
     if (liveEvent) {
