@@ -516,6 +516,10 @@
         font-size: 0.62rem; font-weight: 900; text-transform: uppercase;
         color: rgba(255,255,255,0.65); letter-spacing: 0.3px; text-align: center;
     }
+    .recap-text {
+        font-size: 0.8rem; line-height: 1.5; color: #ffffff;
+        font-weight: 600; padding: 2px 0 4px;
+    }
 
     /* ============================================================
        RANKINGS & STANDINGS
@@ -744,8 +748,14 @@ function getRecord(c) {
     return r?.summary || recs[0]?.summary || '';
 }
 
-const TEXAS_ID = '251';
-function isTexas(team) { return team?.id === TEXAS_ID; }
+const TEXAS_ID = '251'; // known-good for football; kept as a fallback below
+function isTexas(team) {
+    if (!team) return false;
+    if (team.abbreviation === 'TEX') return true;
+    if (/texas longhorns/i.test(team.displayName || '')) return true;
+    if (team.location === 'Texas' && /longhorn/i.test(team.name || team.nickname || '')) return true;
+    return team.id === TEXAS_ID;
+}
 
 // Every place a team's name is displayed should route through this so the
 // t.u. rename applies everywhere without hunting down each call site.
@@ -1334,6 +1344,34 @@ async function getTeamColor(cfg, team) {
     return color;
 }
 
+// One-line recap generated from the final score plus a standout passer,
+// mirroring a quick score-flash summary. Football only, completed games only.
+function buildRecap(away, home, summary) {
+    const awayScore = getScore(away), homeScore = getScore(home);
+    if (awayScore === null || homeScore === null) return null;
+
+    const winner = awayScore > homeScore ? away : home;
+    const loser  = awayScore > homeScore ? home : away;
+    const wScore = Math.max(awayScore, homeScore), lScore = Math.min(awayScore, homeScore);
+    let sentence = `${teamName(winner.team)} defeats ${teamName(loser.team)} ${wScore}-${lScore}.`;
+
+    const leaders = summary?.leaders;
+    if (leaders?.length) {
+        let best = null;
+        leaders.forEach(l => {
+            const passCat = l.leaders?.find(x => /pass/i.test(x.name || x.displayName || ''));
+            const top = passCat?.leaders?.[0];
+            if (!top) return;
+            const yards = parseInt(String(top.displayValue || '').replace(/[^0-9]/g, '')) || 0;
+            if (!best || yards > best.yards) {
+                best = { yards, name: top.athlete?.shortName || top.athlete?.displayName, display: top.displayValue };
+            }
+        });
+        if (best?.name) sentence += ` ${best.name} led the way through the air with ${best.display}.`;
+    }
+    return sentence;
+}
+
 /* ================================================================
    MODAL SYSTEM
 ================================================================ */
@@ -1378,22 +1416,34 @@ async function openGameModal(idx) {
     // the rankings modal) while loading.
     if (modalEvent !== event || !document.getElementById('modal-compare')) return;
 
+    const isFootball = cfg.espnLeague === 'college-football';
+    const done = !!comp?.status?.type?.completed;
+
     let compareHtml = '';
+
+    if (isFootball && done && summary) {
+        const recap = buildRecap(away, home, summary);
+        if (recap) {
+            compareHtml += `<div class="section-title" style="margin-top:4px;">Recap</div><div class="recap-text">${recap}</div>`;
+        }
+    }
 
     const boxRows = summary ? buildBoxscoreComparison(summary, away.team.id, home.team.id, colors) : null;
     if (boxRows) {
-        compareHtml += `<div class="section-title" style="margin-top:4px;">Game Stats</div><div class="cmp-header"><span>${teamName(away.team)}</span><span>${teamName(home.team)}</span></div>${boxRows}`;
+        compareHtml += `<div class="section-title" style="margin-top:16px;">Game Stats</div><div class="cmp-header"><span>${teamName(away.team)}</span><span>${teamName(home.team)}</span></div>${boxRows}`;
     } else {
         const seasonRows = await buildSeasonComparison(cfg, away.team.id, home.team.id, colors);
         if (modalEvent !== event || !document.getElementById('modal-compare')) return;
         if (seasonRows) {
-            compareHtml += `<div class="section-title" style="margin-top:4px;">Season Averages</div><div class="cmp-header"><span>${teamName(away.team)}</span><span>${teamName(home.team)}</span></div>${seasonRows}`;
+            compareHtml += `<div class="section-title" style="margin-top:16px;">Season Averages</div><div class="cmp-header"><span>${teamName(away.team)}</span><span>${teamName(home.team)}</span></div>${seasonRows}`;
         }
     }
 
-    const leaderRows = summary ? buildLeaders(summary, away.team.id, home.team.id) : null;
+    // Key players (top passer/rusher/receiver) — football only, and only
+    // once the game is final, since there's nothing meaningful to show pregame.
+    const leaderRows = (isFootball && done && summary) ? buildLeaders(summary, away.team.id, home.team.id) : null;
     if (leaderRows) {
-        compareHtml += `<div class="section-title" style="margin-top:16px;">Leaders</div>${leaderRows}`;
+        compareHtml += `<div class="section-title" style="margin-top:16px;">Key Players</div>${leaderRows}`;
     }
 
     if (!compareEl) return;
