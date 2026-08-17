@@ -637,8 +637,8 @@
 
     <div class="section-title">Rankings &amp; Standings</div>
     <div class="rank-toggle-row">
-        <button class="rank-toggle-btn" onclick="openRankModal('ap25')">AP Top 25</button>
-        <button class="rank-toggle-btn" onclick="openRankModal('sec')">SEC Standings</button>
+        <button class="rank-toggle-btn" id="btn-ap25" onclick="openRankModal('ap25')">AP Top 25</button>
+        <button class="rank-toggle-btn" id="btn-sec" onclick="openRankModal('sec')">SEC Standings</button>
     </div>
 
     <div class="section-title">Sounds</div>
@@ -744,6 +744,16 @@ function getRecord(c) {
     return r?.summary || recs[0]?.summary || '';
 }
 
+const TEXAS_ID = '251';
+function isTexas(team) { return team?.id === TEXAS_ID; }
+
+// Every place a team's name is displayed should route through this so the
+// t.u. rename applies everywhere without hunting down each call site.
+function teamName(team) {
+    if (isTexas(team)) return 't.u.';
+    return team?.shortDisplayName || team?.displayName || team?.name || team?.nickname || 'TBD';
+}
+
 function getLogo(team) {
     if (!team) return '';
     if (team.logos?.length) {
@@ -758,13 +768,22 @@ function getLogo(team) {
 function logoImg(team) {
     const src = getLogo(team);
     if (!src) return `<div class="gc-logo-placeholder">TBD</div>`;
-    return `<img class="gc-logo" src="${src}" onerror="this.outerHTML='<div class=\\'gc-logo-placeholder\\'>TBD</div>'" alt="">`;
+    const flip = isTexas(team) ? ' style="transform:rotate(180deg);"' : '';
+    return `<img class="gc-logo" src="${src}"${flip} onerror="this.outerHTML='<div class=\\'gc-logo-placeholder\\'>TBD</div>'" alt="">`;
 }
 
 function schedLogoImg(team) {
     const src = getLogo(team);
     if (!src) return `<div class="sched-card-logo-placeholder">TBD</div>`;
-    return `<img class="sched-card-logo" src="${src}" onerror="this.outerHTML='<div class=\\'sched-card-logo-placeholder\\'>TBD</div>'" alt="">`;
+    const flip = isTexas(team) ? ' style="transform:rotate(180deg);"' : '';
+    return `<img class="sched-card-logo" src="${src}"${flip} onerror="this.outerHTML='<div class=\\'sched-card-logo-placeholder\\'>TBD</div>'" alt="">`;
+}
+
+function updateApBtnVisibility(hide) {
+    const apBtn = document.getElementById('btn-ap25');
+    const secBtn = document.getElementById('btn-sec');
+    apBtn.style.display = hide ? 'none' : '';
+    secBtn.style.gridColumn = hide ? '1 / -1' : '';
 }
 
 function rankBadge(rank) {
@@ -775,20 +794,34 @@ function rankBadge(rank) {
    RANKINGS & STANDINGS (AP Top 25 / SEC Standings)
 ================================================================ */
 
-// SEC membership (as of the 2024 realignment) used as a fallback roster for
-// the standings table if ESPN's conference grouping can't be located. Each
-// team's name/logo/record is still pulled live from ESPN — this list only
-// decides which teams to ask about.
-const SEC_TEAM_IDS = ['245','251','201','333','61','99','57','2','8','142','96','2633','2579','145','344','238'];
+// SEC membership (as of the 2024 realignment), used only as a fallback for
+// FOOTBALL specifically if ESPN's live conference grouping can't be found —
+// team IDs are not reliably shared across sports/leagues, so this list must
+// never be reused for basketball/baseball.
+const SEC_TEAM_IDS_FOOTBALL = ['245','251','201','333','61','99','57','2','8','142','96','2633','2579','145','344','238'];
 
 let apRankMap = {};             // teamId -> current AP rank, used for badges app-wide
-let apPollCache = null;         // { sport: [ {current, team}, ... ] }
-const teamRecordCache = {};     // teamId -> { overall, conference }
+let apPollCache = null;         // { sport: [ {current, team}, ... ] } — only ever holds an on-topic (upcoming season) poll
+const teamRecordCache = {};     // `${sport}:${teamId}` -> { overall, conference }
 let rankModalToken = 0;         // guards against a stale async response overwriting a newer modal
 
+// ESPN labels a college basketball/baseball season by the calendar year it
+// ends in (e.g. the 2026-27 basketball season is "season 2027"); football
+// uses the year it starts in and already has an explicit cfg.season.
+function targetSeasonYear(cfg) {
+    if (cfg.season) return cfg.season;
+    const now = new Date();
+    const springSport = cfg.espnSport === 'basketball' || cfg.espnSport === 'baseball';
+    return springSport && now.getMonth() >= 5 ? now.getFullYear() + 1 : now.getFullYear();
+}
+
+// Only ever returns a poll for the upcoming season — if that season's
+// preseason poll hasn't been released yet, this returns an empty list
+// rather than falling back to a stale prior-season poll.
 async function fetchApPoll(cfg) {
     if (apPollCache && apPollCache.sport === currentSport) return apPollCache.ranks;
-    const rankData = await fetchJSON(`${ESPN}/${cfg.espnSport}/${cfg.espnLeague}/rankings`);
+    const year = targetSeasonYear(cfg);
+    const rankData = await fetchJSON(`${ESPN}/${cfg.espnSport}/${cfg.espnLeague}/rankings?season=${year}&seasontype=1`);
     const poll = rankData?.rankings?.find(r => /^AP\s*Top\s*25$/i.test(r.name || '') || /^AP/i.test(r.shortName || ''));
     const ranks = poll?.ranks || [];
     apPollCache = { sport: currentSport, ranks };
@@ -810,24 +843,44 @@ async function refreshRankBadges(cfg) {
 // since nothing here is cached across page loads.
 async function fetchTeamRecord(cfg, teamId) {
     if (!teamId) return { overall: '0-0', conference: '0-0' };
-    if (teamRecordCache[teamId]) return teamRecordCache[teamId];
+    const cacheKey = `${cfg.espnLeague}:${teamId}`;
+    if (teamRecordCache[cacheKey]) return teamRecordCache[cacheKey];
     const data = await fetchJSON(`${ESPN}/${cfg.espnSport}/${cfg.espnLeague}/teams/${teamId}`);
     const items = data?.team?.record?.items || [];
     const overall = items.find(i => i.type === 'total')?.summary || items[0]?.summary || '0-0';
     const conference = items.find(i => /vsconf/i.test(i.type || '') || /conference/i.test(i.description || i.name || ''))?.summary || '0-0';
-    const result = { overall, conference };
-    teamRecordCache[teamId] = result;
+    const result = { overall, conference, team: data?.team || null };
+    teamRecordCache[cacheKey] = result;
     return result;
+}
+
+// Try ESPN's live conference grouping for whichever sport is active; only
+// trust it if it actually looks like the SEC. Falls back to a known-good
+// hardcoded roster for football specifically (never reused across sports —
+// see note above), otherwise reports unavailable rather than showing the
+// wrong teams.
+async function fetchSecRoster(cfg) {
+    const groupData = await fetchJSON(`${ESPN}/${cfg.espnSport}/${cfg.espnLeague}/teams?groups=8&limit=30`);
+    let teams = groupData?.sports?.[0]?.leagues?.[0]?.teams?.map(t => t.team).filter(Boolean) || [];
+
+    const looksRight = teams.length >= 10 && teams.some(t => /Texas A&M|Alabama|Georgia/i.test(t.displayName || ''));
+    if (looksRight) return teams;
+
+    if (cfg.espnLeague === 'college-football') {
+        const profiles = await Promise.all(SEC_TEAM_IDS_FOOTBALL.map(id => fetchJSON(`${ESPN}/${cfg.espnSport}/${cfg.espnLeague}/teams/${id}`)));
+        return profiles.map(p => p?.team).filter(Boolean);
+    }
+    return [];
 }
 
 function rankTableRow(teamId, teamObj, rankLabel, overall, conference, cfg) {
     const isAggies = teamId === cfg.teamId;
     const logo = getLogo(teamObj);
-    const name = teamObj?.shortDisplayName || teamObj?.displayName || teamObj?.name || teamObj?.nickname || 'TBD';
+    const flip = isTexas(teamObj) ? ' style="transform:rotate(180deg);"' : '';
     return `
         <tr class="${isAggies ? 'is-aggies' : ''}">
             <td class="num">${rankLabel}</td>
-            <td><div class="rank-team-cell">${logo ? `<img src="${logo}" alt="">` : ''}${name}</div></td>
+            <td><div class="rank-team-cell">${logo ? `<img src="${logo}"${flip} alt="">` : ''}${teamName(teamObj)}</div></td>
             <td class="num">${overall}</td>
             <td class="num">${conference}</td>
         </tr>`;
@@ -849,7 +902,7 @@ async function openRankModal(which) {
         const ranks = await fetchApPoll(cfg);
         if (myToken !== rankModalToken || !contentEl()) return;
         if (!ranks.length) {
-            contentEl().innerHTML = `<div class="loading" style="padding:14px 0;">AP Top 25 isn't available for this sport right now.</div>`;
+            contentEl().innerHTML = `<div class="loading" style="padding:14px 0;">The preseason AP Top 25 for the upcoming season hasn't been released yet.</div>`;
             return;
         }
         const withRecords = await Promise.all(ranks.map(async r => ({
@@ -859,19 +912,17 @@ async function openRankModal(which) {
         const rows = withRecords.map(r => rankTableRow(r.team?.id, r.team, `#${r.rank}`, r.overall, r.conference, cfg)).join('');
         contentEl().innerHTML = `<table class="rank-table"><thead><tr><th class="num">Rank</th><th>Team</th><th class="num">Overall</th><th class="num">Conf</th></tr></thead><tbody>${rows}</tbody></table>`;
     } else {
-        // SEC roster is fixed; record data is fetched live per team so it
-        // reads 0-0 before conference play starts and updates automatically.
-        const teams = await Promise.all(SEC_TEAM_IDS.map(async id => {
-            const profile = await fetchJSON(`${ESPN}/${cfg.espnSport}/${cfg.espnLeague}/teams/${id}`);
-            return profile?.team ? { team: profile.team, ...(await fetchTeamRecord(cfg, id)) } : null;
-        }));
+        // Record data is fetched live per team so it reads 0-0 before
+        // conference play starts and updates automatically as games happen.
+        const roster = await fetchSecRoster(cfg);
         if (myToken !== rankModalToken || !contentEl()) return;
-        const valid = teams.filter(Boolean);
-        if (!valid.length) {
-            contentEl().innerHTML = `<div class="loading" style="padding:14px 0;">SEC standings aren't available right now.</div>`;
+        if (!roster.length) {
+            contentEl().innerHTML = `<div class="loading" style="padding:14px 0;">SEC standings aren't available for this sport right now.</div>`;
             return;
         }
-        const rows = valid.map((t, i) => rankTableRow(t.team?.id, t.team, i + 1, t.overall, t.conference, cfg)).join('');
+        const withRecords = await Promise.all(roster.map(async t => ({ team: t, ...(await fetchTeamRecord(cfg, t.id)) })));
+        if (myToken !== rankModalToken || !contentEl()) return;
+        const rows = withRecords.map((t, i) => rankTableRow(t.team?.id, t.team, i + 1, t.overall, t.conference, cfg)).join('');
         contentEl().innerHTML = `<table class="rank-table"><thead><tr><th class="num">#</th><th>Team</th><th class="num">Overall</th><th class="num">Conf</th></tr></thead><tbody>${rows}</tbody></table>`;
     }
 }
@@ -986,7 +1037,7 @@ function renderLiveScore(event, cfg = {}) {
     el.innerHTML = `
         <div class="gc-team">
             ${logoImg(away.team)}
-            <div class="gc-name-row">${rankBadge(getRank(away))}${away.team.shortDisplayName}</div>
+            <div class="gc-name-row">${rankBadge(getRank(away))}${teamName(away.team)}</div>
             <div class="gc-record">${getRecord(away)}</div>
         </div>
         <div class="gc-center">
@@ -996,7 +1047,7 @@ function renderLiveScore(event, cfg = {}) {
         </div>
         <div class="gc-team">
             ${logoImg(home.team)}
-            <div class="gc-name-row">${rankBadge(getRank(home))}${home.team.shortDisplayName}</div>
+            <div class="gc-name-row">${rankBadge(getRank(home))}${teamName(home.team)}</div>
             <div class="gc-record">${getRecord(home)}</div>
         </div>`;
 }
@@ -1059,7 +1110,7 @@ function renderNextGame(events, cfg) {
         </div>
         <div class="gc-team">
             ${logoImg(opp?.team)}
-            <div class="gc-name-row">${rankBadge(getRank(opp))}${opp?.team?.shortDisplayName || 'TBD'}</div>
+            <div class="gc-name-row">${rankBadge(getRank(opp))}${teamName(opp?.team)}</div>
             <div class="gc-record">${oppRec}</div>
         </div>`;
 }
@@ -1085,7 +1136,7 @@ function renderScheduleGrid(events, cfg) {
         const homeAwayClass = isHome ? 'home' : 'away';
         const nextClass = idx === nextIdx ? 'next-up' : '';
         const homeAwayLabel = isHome ? 'vs' : '@';
-        const oppName  = opp?.team?.shortDisplayName || opp?.team?.displayName || 'TBD';
+        const oppName  = teamName(opp?.team);
         const gd       = new Date(event.date);
         const dateStr  = toCTDate(gd, { month:'short', day:'numeric' }).toUpperCase();
         const timeStr  = toCT(gd);
@@ -1200,7 +1251,7 @@ function buildBoxscoreComparison(summary, awayTeamId, homeTeamId, colors) {
 // boxscore data exists). Uses the current season explicitly so it starts
 // at 0 before kickoff and updates automatically as games are played.
 async function buildSeasonComparison(cfg, awayTeamId, homeTeamId, colors) {
-    const year = cfg.season || new Date().getFullYear();
+    const year = targetSeasonYear(cfg);
     const url = id => `${ESPN}/${cfg.espnSport}/${cfg.espnLeague}/teams/${id}/statistics?season=${year}`;
     const [awayData, homeData] = await Promise.all([fetchJSON(url(awayTeamId)), fetchJSON(url(homeTeamId))]);
     if (!awayData || !homeData) return null;
@@ -1301,9 +1352,9 @@ async function openGameModal(idx) {
     const body = document.getElementById('modal-body');
     body.innerHTML = `
         <div class="modal-matchup-header">
-            <div class="mm-team">${logoImg(away.team)}<div class="mm-name">${getRank(away) ? `#${getRank(away)} ` : ''}${away.team.shortDisplayName}</div><div class="mm-record">${getRecord(away)}</div></div>
+            <div class="mm-team">${logoImg(away.team)}<div class="mm-name">${getRank(away) ? `#${getRank(away)} ` : ''}${teamName(away.team)}</div><div class="mm-record">${getRecord(away)}</div></div>
             <div class="mm-vs">@</div>
-            <div class="mm-team">${logoImg(home.team)}<div class="mm-name">${getRank(home) ? `#${getRank(home)} ` : ''}${home.team.shortDisplayName}</div><div class="mm-record">${getRecord(home)}</div></div>
+            <div class="mm-team">${logoImg(home.team)}<div class="mm-name">${getRank(home) ? `#${getRank(home)} ` : ''}${teamName(home.team)}</div><div class="mm-record">${getRecord(home)}</div></div>
         </div>
         <div id="modal-compare" class="modal-compare">
             <div class="loading" style="padding:16px 0;">Loading matchup stats...</div>
@@ -1331,12 +1382,12 @@ async function openGameModal(idx) {
 
     const boxRows = summary ? buildBoxscoreComparison(summary, away.team.id, home.team.id, colors) : null;
     if (boxRows) {
-        compareHtml += `<div class="section-title" style="margin-top:4px;">Game Stats</div><div class="cmp-header"><span>${away.team.shortDisplayName}</span><span>${home.team.shortDisplayName}</span></div>${boxRows}`;
+        compareHtml += `<div class="section-title" style="margin-top:4px;">Game Stats</div><div class="cmp-header"><span>${teamName(away.team)}</span><span>${teamName(home.team)}</span></div>${boxRows}`;
     } else {
         const seasonRows = await buildSeasonComparison(cfg, away.team.id, home.team.id, colors);
         if (modalEvent !== event || !document.getElementById('modal-compare')) return;
         if (seasonRows) {
-            compareHtml += `<div class="section-title" style="margin-top:4px;">Season Averages</div><div class="cmp-header"><span>${away.team.shortDisplayName}</span><span>${home.team.shortDisplayName}</span></div>${seasonRows}`;
+            compareHtml += `<div class="section-title" style="margin-top:4px;">Season Averages</div><div class="cmp-header"><span>${teamName(away.team)}</span><span>${teamName(home.team)}</span></div>${seasonRows}`;
         }
     }
 
@@ -1445,7 +1496,10 @@ async function setSport(sport) {
     document.getElementById(`btn-${sport.split('-')[0]}`).classList.add('active');
 
     const cfg = sportConfig[sport];
-    
+
+    // Baseball doesn't have an AP Top 25 poll.
+    updateApBtnVisibility(sport === 'baseball');
+
     document.getElementById('live-score').innerHTML = '<div style="font-weight:700;color:#888;font-size:0.9rem">Loading...</div>';
     document.getElementById('sched-grid').innerHTML = '<div class="loading" style="grid-column:1/-1">Loading schedule...</div>';
 
@@ -1483,6 +1537,7 @@ setInterval(async () => {
 /* Initialize */
 (async () => {
     const cfg = sportConfig[currentSport];
+    updateApBtnVisibility(currentSport === 'baseball');
     const [liveEvent, schedule] = await Promise.all([
         fetchLiveScore(cfg),
         fetchSchedule(cfg),
